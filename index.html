@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Mini Platformer – hosszú pálya, mozgó platformok, boss, hangok</title>
+<title>Mini Platformer – hosszú pálya, mozgó platformok, boss, hangok (fix)</title>
 <style>
 :root{
   --ink:#0f172a;--hud:#ffffffcc;--sky:#8fd3ff;--ground:#7c3aed;
@@ -56,7 +56,7 @@ const VIEW_W=960, VIEW_H=540; let camX=0;
 
 /* ===== WebAudio ===== */
 const AC = window.AudioContext? new AudioContext():null;
-const master=AC?AC.createGain():null; if(master){master.gain.value=0.35; master.connect(AC.destination);}
+const master=AC?AC.createGain():null; if(master){master.gain.value=0.35; master.connect(AC.destination);} 
 function sfx(freq=440,dur=0.07,type='square',gain=0.12){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(); const g=AC.createGain(); o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(master); o.start(t); o.stop(t+dur); }
 function sweep(f1,f2,dur,type='sawtooth',gain=0.12){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(); const g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur); g.gain.value=gain; o.connect(g).connect(master); o.start(t); o.stop(t+dur); }
 let musicOn=true; const musicBtn=document.getElementById('music'); const volEl=document.getElementById('vol');
@@ -90,7 +90,7 @@ const platforms=[
   moving(2100,floorY-220,140,16,2060,2360,1.6),
   moving(2580,floorY-180,160,16,2520,2860,1.3)
 ];
-function moving(x,y,w,h,minX,maxX,speed){return{x,y,w,h,type:'moving',minX,maxX,speed,dir:1};}
+function moving(x,y,w,h,minX,maxX,speed){return{x,y,w,h,type:'moving',minX,maxX,speed,dir:1}};
 
 /* ===== Blocks, coins, serum ===== */
 const qblocks=[
@@ -111,7 +111,7 @@ const enemies=[
 let fallSpawners=[ {x:1450, interval:240, timer:0},{x:2500, interval:200, timer:0} ];
 function patrol(x,y,w,h,minX,maxX,speed){return{type:'patrol',x,y,w,h,minX,maxX,speed,dir:1,vx:speed,vy:0,onGround:false,active:true}};
 function fly(x,y,w,h,minX,maxX,speed,amp){return{type:'fly',x,y,w,h,minX,maxX,speed,dir:1,t:0,amp,active:true}};
-function falling(x){return{type:'fall',x,y:-40,w:20,h:20,vx:0,vy:2.5,active:true}}
+function falling(x){return{type:'fall',x,y:-40,w:20,h:20,vx:0,vy:2.5,active:true}};
 
 /* ===== Boss & Goal ===== */
 const boss={x:WORLD_W-320,y:floorY-120,w:58,h:64,vx:0,vy:0,hp:14,alive:true,cd:0};
@@ -122,8 +122,19 @@ const bullets=[]; // {x,y,w,h,vx,vy,who:'player'|'enemy'}
 
 /* ===== Input ===== */
 const keys={left:false,right:false,jump:false,shoot:false};
-addEventListener('keydown',e=>{if(['ArrowLeft','KeyA'].includes(e.code))keys.left=true; if(['ArrowRight','KeyD'].includes(e.code))keys.right=true; if(e.code==='Space'){e.preventDefault(); keys.jump=true;} if(e.code==='KeyK') keys.shoot=true;});
-addEventListener('keyup',e=>{if(['ArrowLeft','KeyA'].includes(e.code))keys.left=false; if(['ArrowRight','KeyD'].includes(e.code))keys.right=false; if(e.code==='Space')keys.jump=false; if(e.code==='KeyK') keys.shoot=false;});
+let wantJump=false; // \u2190 csak friss lenyomásra ugorjon (anti "pattogás" a peremen)
+addEventListener('keydown',e=>{
+  if(['ArrowLeft','KeyA'].includes(e.code))keys.left=true;
+  if(['ArrowRight','KeyD'].includes(e.code))keys.right=true;
+  if(e.code==='Space'){ e.preventDefault(); if(!keys.jump){ wantJump=true; } keys.jump=true; }
+  if(e.code==='KeyK') keys.shoot=true;
+});
+addEventListener('keyup',e=>{
+  if(['ArrowLeft','KeyA'].includes(e.code))keys.left=false;
+  if(['ArrowRight','KeyD'].includes(e.code))keys.right=false;
+  if(e.code==='Space'){ keys.jump=false; }
+  if(e.code==='KeyK') keys.shoot=false;
+});
 
 /* ===== UI ===== */
 id('restart').onclick=()=>reset();
@@ -142,10 +153,8 @@ function onTopOf(a,b){ const horiz = a.x + a.w > b.x && a.x < b.x + b.w; const f
 
 /* ===== Reset ===== */
 function reset(){
-  Object.assign(player,{x:60,y:floorY-48,vx:0,vy:0,onGround:false,lives:3,score:0,anim:0,frame:0,state:'idle',ammo:0});
-  // gombállapotok nullázása
-  keys.left=keys.right=keys.jump=keys.shoot=false;
-  // ellenfelek/loot alaphelyzet
+  Object.assign(player,{x:60,y:floorY-48,vx:0,vy:0,onGround:false,faces:1,lives:3,score:0,anim:0,frame:0,state:'idle',ammo:0});
+  keys.left=keys.right=keys.jump=keys.shoot=false; wantJump=false;
   enemies.splice(0,enemies.length,
     patrol(380,floorY-20,22,20,340,560,1.1),
     patrol(1080,floorY-20,22,20,1060,1160,1.2),
@@ -166,7 +175,7 @@ function reset(){
 function moveAndCollide(o){
   // X
   o.x+=o.vx||0;
-  for(const p of solids()){ if(aabb(o,p)){ if(o.vx>0) o.x=p.x-o.w; else if(o.vx<0) o.x=p.x+p.w; o.vx=0; }}
+  for(const p of solids()){ if(aabb(o,p)){ if((o.vx||0)>0) o.x=p.x-o.w; else if((o.vx||0)<0) o.x=p.x+p.w; o.vx=0; }}
   // Y
   o.y+=o.vy||0; let onG=false;
   for(const p of solids()){ if(aabb(o,p)){ if((o.vy||0)>0){ o.y=p.y-o.h; onG=true; } else if((o.vy||0)<0){ o.y=p.y+p.h; } o.vy=0; }}
@@ -185,7 +194,8 @@ function update(){
   if(keys.left) player.vx-=MOVE;
   if(keys.right) player.vx+=MOVE;
   player.vx*=FRICTION; player.vx=clamp(player.vx,-MAX_VX,MAX_VX);
-  if(keys.jump && player.onGround){ player.vy=JUMP; player.onGround=false; sfx(700,0.08,'square',0.1); }
+  if(wantJump && player.onGround){ player.vy=JUMP; player.onGround=false; sfx(700,0.08,'square',0.1); }
+  wantJump=false; // \u2190 egy frame-re fogyasztjuk el, így nincs pattogás
   player.vy+=G; if(player.vy>20) player.vy=20;
 
   // Anim
@@ -292,7 +302,9 @@ function hurt(fall=false){
 /* ===== Draw ===== */
 function rr(x,y,w,h,r){const t=Math.min(r,Math.abs(w)/2,Math.abs(h)/2); ctx.beginPath(); ctx.moveTo(x+t,y); ctx.arcTo(x+w,y,x+w,y+h,t); ctx.arcTo(x+w,y+h,x,y+h,t); ctx.arcTo(x,y+h,x,y,t); ctx.arcTo(x,y,x+w,y,t); ctx.closePath();}
 function draw(){
-  ctx.clearRect(0,0,VIEW_W,VIEW_H);
+  // teljes vászon törlés HiDPI-kompatibilisen
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cvs.width,cvs.height); ctx.restore();
+
   ctx.save(); ctx.translate(-camX,0);
   drawBackground();
   // ground
@@ -321,7 +333,7 @@ function drawBackground(){
   ctx.fillStyle='rgba(255,255,255,.9)'; [150,520,870,1320,1700,2120,2520].forEach((x,i)=>cloud(x+Math.sin((performance.now()/1200)+i)*20,120+ (i%3)*30));
 }
 function tri(cx,by,sz){ctx.beginPath();ctx.moveTo(cx,by);ctx.lineTo(cx-sz,by);ctx.lineTo(cx,by-sz);ctx.closePath();ctx.fill();}
-function cloud(x,y){bubble(x,y,22);bubble(x+18,y-8,16);bubble(x+38,y,20);bubble(x+56,y-6,14);}
+function cloud(x,y){bubble(x,y,22);bubble(x+18,y-8,16);bubble(x+38,y,20);bubble(x+56,y-6,14);} 
 function bubble(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
 
 function drawBrick(p){
@@ -363,7 +375,10 @@ function drawFlag(){
   ctx.beginPath(); ctx.moveTo(goal.x+goal.w, goal.y+20); ctx.lineTo(goal.x+goal.w+28, goal.y+16+wave); ctx.lineTo(goal.x+goal.w+28, goal.y+28-wave); ctx.closePath(); ctx.fill();
 }
 function drawPlayer(){
-  ctx.save(); ctx.translate(player.x+player.w/2 - camX, player.y+player.h/2); ctx.scale(player.faces,1);
+  ctx.save();
+  // \u26a0\ufe0f FIX: ne vond le újra a camX-et, mert a draw() már eltolta a világot. Ez okozta a "perem pattogást" és a látszólagos visszaugrást.
+  ctx.translate(player.x+player.w/2, player.y+player.h/2);
+  ctx.scale(player.faces,1);
   ctx.fillStyle=getVar('--player'); rr(-10,-18,20,36,6); ctx.fill(); // törzs
   ctx.fillStyle='#ffe08a'; rr(-9,-30,18,14,4); ctx.fill(); // fej
   ctx.fillStyle='#111'; ctx.fillRect(2,-26,3,3); // szem
