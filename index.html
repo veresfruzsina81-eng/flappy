@@ -1,223 +1,232 @@
 <!doctype html>
 <html lang="hu">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pixel Plumber – START‑SAFE Mario‑hangulat (egyfájlos)</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Pet • Tamás edition</title>
 <style>
-  /* NES‑paletta és tiszta pixelart */
-  :root{
-    --sky1:#87baff; --sky2:#cfe6ff;
-    --hill1:#6cb06f; --hill2:#4c8f51;
-    --ground1:#8b5a2b; --ground2:#5b391a;
-    --brick1:#b84a2b; --brick2:#7a2d1b;
-    --q1:#f6c142; --q2:#a87317; --qHit:#ffe08a;
-    --pipe1:#2ca05a; --pipe2:#1f6f3e;
-    --coin:#ffe16a; --flag:#3ddc84; --flag2:#1fbf6a;
-    --player:#ffd45c; --hat:#e39a00; --eye:#0a0a0a;
-    --enemy:#e24b3b; --shell1:#3c7dff; --shell2:#1f4bcc;
-    --hud:#ffffffcc; --ink:#0f172a;
-  }
-  html,body{height:100%;margin:0;background:linear-gradient(var(--sky1),var(--sky2));color:var(--ink);font:14px/1.4 system-ui,Segoe UI,Inter,Roboto,Arial,sans-serif}
-  #wrap{display:grid;place-items:center;height:100%}
-  canvas{background:linear-gradient(180deg,var(--sky1),var(--sky2));border-radius:12px;box-shadow:0 18px 70px rgba(2,6,23,.25);image-rendering:pixelated;image-rendering: crisp-edges;}
-  .hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:16px;padding:8px 12px;background:var(--hud);border-radius:10px;font-weight:800;align-items:center}
-  .btnbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
-  button{border:0;border-radius:10px;padding:8px 12px;background:#ffffffcc;backdrop-filter:blur(4px);font-weight:700;cursor:pointer}
-  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,15,30,.35)}
-  .card{background:#fff;padding:22px 26px;border-radius:12px;box-shadow:0 14px 50px rgba(0,0,0,.3);text-align:center}
-  .card h1{margin:0 0 8px}
-  .kbd{font-family:ui-monospace,Consolas,monospace;background:#e2e8f0;border-radius:6px;padding:2px 6px;margin:0 2px;display:inline-block}
+:root{--bg:#f3f7ff;--ink:#0f172a;--card:#fff;--ui:#111827;--acc:#6ee7b7;--warn:#f59e0b;--ok:#22c55e;--bad:#ef4444}
+*{box-sizing:border-box} html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:linear-gradient(180deg,#eaf3ff,#fafdff)}
+.wrap{max-width:980px;margin:24px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+.card{background:var(--card);border-radius:16px;box-shadow:0 10px 40px rgba(2,6,23,.08);padding:16px}
+h1{font-size:22px;margin:0 0 8px}
+small.mono{font-family:ui-monospace,Consolas,monospace;opacity:.7}
+canvas{width:100%;height:420px;display:block;border-radius:14px;background:linear-gradient(180deg,#c3e4ff,#ffffff)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.bar{background:#eef2ff;border-radius:10px;overflow:hidden;height:10px}
+.fill{height:100%;background:linear-gradient(90deg,#60a5fa,#22c55e)}
+.buttons{display:flex;flex-wrap:wrap;gap:8px}
+button{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#eef2ff}
+button.primary{background:#dbeafe}
+button:active{transform:translateY(1px)}
+.hud{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hud input[type=range]{width:140px}
+.chat{display:flex;flex-direction:column;gap:8px;height:520px}
+.chatlog{flex:1;overflow:auto;background:#f6f7fb;border-radius:12px;padding:12px}
+.msg{margin-bottom:10px}
+.msg.me{ text-align:right}
+.bubble{display:inline-block;padding:10px 12px;border-radius:12px;max-width:80%}
+.me .bubble{background:#dbeafe}
+.ai .bubble{background:#e9ffef}
+input[type=text]{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px}
+.kbd{font-family:ui-monospace,Consolas,monospace;background:#eef2ff;border-radius:8px;padding:2px 6px}
+footer{margin-top:8px;opacity:.7;font-size:12px}
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div class="hud">Élet: <span id="lives">3</span> • Pont: <span id="score">0</span> • Idő: <span id="time">0</span>s • Állapot: <span id="state">kicsi</span></div>
-  <canvas id="game" width="960" height="540" aria-label="Pixel Plumber"></canvas>
-  <div class="btnbar"><button id="reset">Újra</button><button id="pause">Szünet</button></div>
-</div>
-<div class="overlay" id="startOL">
-  <div class="card">
-    <h1>Pixel Plumber</h1>
-    <p>Nyomd meg a <span class="kbd">Space</span>-t vagy <span class="kbd">→</span>-t a kezdéshez.</p>
-    <p>Irányítás: <span class="kbd">A/←</span>, <span class="kbd">D/→</span>, <span class="kbd">Space</span></p>
+<div class="wrap">
+  <div class="hud">
+    <h1 style="margin-right:auto">AI Pet • <span id="petName">Kipi</span></h1>
+    <label>Hangerő <input id="vol" type="range" min="0" max="1" step="0.01" value="0.35"></label>
+    <button id="rename">Név csere</button>
+  </div>
+
+  <div class="grid">
+    <!-- Bal: játék -->
+    <div class="card">
+      <canvas id="cvs" width="920" height="420" aria-label="AI Pet vászon"></canvas>
+
+      <div class="stats">
+        <div><div style="display:flex;justify-content:space-between"><small>Éhség</small><small id="hungerV">50</small></div><div class="bar"><div id="hunger" class="fill" style="width:50%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between"><small>Energia</small><small id="energyV">50</small></div><div class="bar"><div id="energy" class="fill" style="width:50%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between"><small>Tisztaság</small><small id="cleanV">50</small></div><div class="bar"><div id="clean" class="fill" style="width:50%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between"><small>Boldogság</small><small id="happyV">50</small></div><div class="bar"><div id="happy" class="fill" style="width:50%"></div></div></div>
+      </div>
+
+      <div class="buttons">
+        <button id="feed" class="primary">🍽️ Etetés</button>
+        <button id="wash">🫧 Fürdetés</button>
+        <button id="sleep">😴 Alvás</button>
+        <button id="play">🎈 Játék</button>
+        <button id="save">💾 Mentés</button>
+        <button id="reset">♻️ Reset</button>
+        <small class="mono">Tipp: <span class="kbd">F</span>=Etetés, <span class="kbd">W</span>=Fürdés, <span class="kbd">S</span>=Alvás, <span class="kbd">P</span>=Játék</small>
+      </div>
+    </div>
+
+    <!-- Jobb: AI chat -->
+    <div class="card chat">
+      <div class="chatlog" id="log"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="input" placeholder="Írj Kipi-nek… (pl.: Mit szeretnél játszani?)">
+        <button id="send">Küldés</button>
+      </div>
+      <footer>Az AI-válaszokat egy **saját proxy** hívja (ne tedd az API-kulcsot a kliensbe!). Endpoint: <code>/api/chat</code></footer>
+    </div>
   </div>
 </div>
+
 <script>
-// =============================================================
-// "START‑SAFE": nem tudsz rögtön szakadékba esni.
-// - Stabil, széles kezdőplatform + indulás csak első inputra.
-// - Játékosbarát fizika (coyote, buffer, változó ugrás).
-// - Klasszikus ellenfelek (goomba, páncél), power‑up gomba, téglák, kérdő.
-// =============================================================
-const cvs=document.getElementById('game'); const ctx=cvs.getContext('2d');
-if(!cvs.width||!cvs.height){cvs.width=960;cvs.height=540;} ctx.imageSmoothingEnabled=false;
-const SCALE=3, VW=Math.floor(cvs.width/SCALE), VH=Math.floor(cvs.height/SCALE), TILE=16;
-let camX=0, started=false; const startOL=document.getElementById('startOL');
+/* ======= Állapot ======= */
+const state = JSON.parse(localStorage.getItem('pet-state')||'{}');
+const pet = {
+  name: state.name || 'Kipi',
+  hunger: state.hunger ?? 50,   // 0 jóllakott → 100 nagyon éhes
+  energy: state.energy ?? 50,
+  clean:  state.clean  ?? 50,
+  happy:  state.happy  ?? 50,
+  mood: 'neutral'
+};
+const saveState=()=>localStorage.setItem('pet-state', JSON.stringify(pet));
 
-/* ===== HUD ===== */
-const livesEl=gid('lives'), scoreEl=gid('score'), timeEl=gid('time'), stateEl=gid('state'); function gid(x){return document.getElementById(x)}
+/* ======= Vászon & hang ======= */
+const cvs=document.getElementById('cvs'), ctx=cvs.getContext('2d');
+const vol=document.getElementById('vol');
+const AC=window.AudioContext?new AudioContext():null;
+const master=AC?AC.createGain():null; if(master){master.connect(AC.destination); master.gain.value=+vol.value}
+vol.oninput=()=>{if(master) master.gain.value=+vol.value};
+function beep(f=600,d=0.08,type='sine',g=0.12){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(), a=AC.createGain(); o.type=type; o.frequency.value=f; a.gain.value=g; o.connect(a).connect(master); o.start(); o.stop(t+d); }
 
-/* ===== Fizika ===== */
-const GRAV=2000, MOVE_ACC=2200, AIR_ACC=1400, MAX_RUN=180, FRICTION=1800; const JUMP_V=-720, COYOTE=0.12, JUMP_BUF=0.12;
-let last=performance.now()/1000, acc=0; const DT=1/60; let run=true, clock=0;
+/* ======= UI kötés ======= */
+const $ = id => document.getElementById(id);
+$('petName').textContent = pet.name;
+$('rename').onclick=()=>{const n=prompt('Mi legyen a neve?', pet.name); if(n){pet.name=n; $('petName').textContent=pet.name; saveState();}}
+const bars = { hunger:$('hunger'), energy:$('energy'), clean:$('clean'), happy:$('happy'),
+               hungerV:$('hungerV'), energyV:$('energyV'), cleanV:$('cleanV'), happyV:$('happyV') };
 
-/* ===== Játékos ===== */
-const player={x:0,y:0,w:12,h:14,vx:0,vy:0,onGround:false,facing:1,lives:3,score:0,coyote:0,jbuf:0,wantCut:false,big:false,spawn:{x:0,y:0}};
-
-/* ===== Pálya – START SAFE ===== */
-// a legelső 25 csempe összefüggő talaj + felette 3 csempe szabad tér
-// csak később jönnek szakadékok / ugrások
-const LEVEL=[
-  "................................................................................................",
-  "................................................................................................",
-  "......................c..................c.......................c.........................G.....",
-  ".................====...............B?B====.................B?B====.......................|||....",
-  "..........................c.................................................................|||....",
-  "....c...............B?B...............c.................B?B................................|||....",
-  ".................====...............B B====.............B B====..................................",
-  "................................................................................................",
-  "#########################.................###############..................##############........",
-  "#########################.................###############...........e......##############....####",
-  "#########################....e....t......###############....t..............##############.e..####",
-  "#########################pppppppppppppppp###############ppppppppppppppppp##############pppp####",
-];
-const H=LEVEL.length, W=LEVEL[0].length;
-function tileAt(tx,ty){ if(ty<0||ty>=H||tx<0||tx>=W) return '.'; return LEVEL[ty][tx]; }
-function isSolid(ch){ return ch==='#'||ch==='='||ch==='B'||ch==='|'; }
-
-/* ===== Objektumok ===== */
-const coins=[], blocks=[], enemies=[], items=[]; let goal=null;
-function build(){ coins.length=0; blocks.length=0; enemies.length=0; items.length=0; goal=null;
-  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const c=LEVEL[y][x], rx=x*TILE, ry=y*TILE;
-    if(c==='c') coins.push({x:rx+8,y:ry+8,w:8,h:8,t:0});
-    if(c==='?') blocks.push({x:rx,y:ry,w:16,h:16,hit:false,kind:(Math.random()<0.7?'coin':'mush')});
-    if(c==='B') blocks.push({x:rx,y:ry,w:16,h:16,hit:false,kind:'brick'});
-    if(c==='e') enemies.push(makeGoomba(rx,ry-2));
-    if(c==='t') enemies.push(makeTurtle(rx,ry-2));
-    if(c==='G') goal={x:rx+2,y:ry-96,w:8,h:96};
-    if(c==='p'){ player.spawn.x=rx; player.spawn.y=ry-2; }
-  }
-  // START: biztos, széles platform bal szélen
-  player.spawn.x = 2*TILE; player.spawn.y = (H-2)*TILE - 2; // a folyamatos földön
-  respawn(true); camX=0; started=false; startOL.style.display='flex';
+function clamp(v,a=0,b=100){ return Math.max(a,Math.min(b,v)); }
+function applyDecay(){
+  pet.hunger = clamp(pet.hunger + 0.03);
+  pet.energy = clamp(pet.energy - 0.02);
+  pet.clean  = clamp(pet.clean  - 0.015);
+  // boldogság kontó: rossz állapotban csökken
+  const penalty = (pet.hunger>70?0.05:0) + (pet.energy<30?0.05:0) + (pet.clean<30?0.05:0);
+  pet.happy = clamp(pet.happy + 0.015 - penalty);
+}
+function setMood(){
+  if(pet.happy>70 && pet.hunger<50 && pet.clean>50) pet.mood='happy';
+  else if(pet.hunger>80 || pet.clean<25) pet.mood='sad';
+  else if(pet.energy<25) pet.mood='sleepy';
+  else pet.mood='neutral';
+}
+function refreshBars(){
+  bars.hunger.style.width=pet.hunger+'%';    bars.hungerV.textContent=pet.hunger|0;
+  bars.energy.style.width=pet.energy+'%';    bars.energyV.textContent=pet.energy|0;
+  bars.clean .style.width=pet.clean+'%';     bars.cleanV .textContent=pet.clean|0;
+  bars.happy .style.width=pet.happy+'%';     bars.happyV .textContent=pet.happy|0;
 }
 
-/* ===== Ellenségek / Itemek ===== */
-function makeGoomba(x,y){return {type:'goomba',x,y,w:14,h:12,dir:-1,vx:-40,vy:0,alive:true}};
-function makeTurtle(x,y){return {type:'turtle',x,y,w:14,h:14,dir:-1,vx:-35,vy:0,alive:true,shell:false,slide:false}};
-function spawnMushroom(x,y){items.push({type:'mush',x,y,w:12,h:12,vx:40*(Math.random()<0.5?-1:1),vy:0});}
+/* ======= Akciók ======= */
+function act(type){
+  if(type==='feed'){ pet.hunger=clamp(pet.hunger-25); pet.happy=clamp(pet.happy+8); beep(520,.09,'triangle')}
+  if(type==='wash'){ pet.clean =clamp(pet.clean +30); pet.happy=clamp(pet.happy+5); beep(900,.08,'sine')}
+  if(type==='sleep'){ pet.energy=clamp(pet.energy+40); pet.hunger=clamp(pet.hunger+10); beep(300,.12,'sine')}
+  if(type==='play'){  pet.happy =clamp(pet.happy +20); pet.energy=clamp(pet.energy-10); beep(740,.08,'square')}
+  setMood(); saveState(); refreshBars(); flash(type);
+}
+$('feed').onclick = ()=>act('feed');
+$('wash').onclick = ()=>act('wash');
+$('sleep').onclick= ()=>act('sleep');
+$('play').onclick = ()=>act('play');
+$('save').onclick = ()=>{saveState(); alert('Elmentve ✅')};
+$('reset').onclick= ()=>{localStorage.removeItem('pet-state'); location.reload()};
 
-/* ===== Input ===== */
-const keys={left:0,right:0,jump:0};
+// gyorsbillentyűk
 addEventListener('keydown',e=>{
-  if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=1;
-  if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=1;
-  if(e.code==='Space'){ if(!keys.jump) player.jbuf=JUMP_BUF; keys.jump=1; e.preventDefault(); }
-  // első input -> start
-  if(!started && (e.code==='Space'||e.code==='ArrowRight'||e.code==='KeyD')){ started=true; startOL.style.display='none'; clock=0; }
-});
-addEventListener('keyup',e=>{
-  if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=0;
-  if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=0;
-  if(e.code==='Space'){ keys.jump=0; player.wantCut=true; }
+  if(e.repeat) return;
+  if(e.key.toLowerCase()==='f') act('feed');
+  if(e.key.toLowerCase()==='w') act('wash');
+  if(e.key.toLowerCase()==='s') act('sleep');
+  if(e.key.toLowerCase()==='p') act('play');
 });
 
-/* ===== WebAudio minimál SFX ===== */
-const AC=window.AudioContext?new AudioContext():null; const master=AC?AC.createGain():null; if(master){master.connect(AC.destination); master.gain.value=0.2}
-function beep(f=440,d=0.06,type='square'){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(), g=AC.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.12,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g).connect(master); o.start(t); o.stop(t+d+0.02); }
-addEventListener('pointerdown',()=>{ if(AC&&AC.state==='suspended') AC.resume(); },{once:true});
+/* ======= Animáció ======= */
+let t=0, flashTimer=0, flashType='';
+function flash(type){flashType=type; flashTimer=18;}
+function draw(){
+  t+=1/60; applyDecay(); setMood(); refreshBars();
 
-/* ===== Kollízió ===== */
-function collide(x,y,w,h, vx,vy){
-  let nx=x+vx, ny=y; const minTX=Math.floor(Math.min(x,nx)/TILE)-1, maxTX=Math.floor(Math.max(x+w,nx+w)/TILE)+1; const minTY=Math.floor(y/TILE)-1, maxTY=Math.floor((y+h)/TILE)+1;
-  for(let ty=minTY;ty<=maxTY;ty++)for(let tx=minTX;tx<=maxTX;tx++){ const ch=tileAt(tx,ty); if(!isSolid(ch)) continue; const rx=tx*TILE, ry=ty*TILE; if(nx<rx+TILE && nx+w>rx && ny<ry+TILE && ny+h>ry){ if(vx>0) nx=rx-w; else if(vx<0) nx=rx+TILE; vx=0; } }
-  ny+=vy; let onG=false;
-  for(let ty=minTY;ty<=maxTY;ty++)for(let tx=minTX;tx<=maxTX;tx++){ const ch=tileAt(tx,ty); const rx=tx*TILE, ry=ty*TILE; if(!isSolid(ch)) continue; if(nx<rx+TILE && nx+w>rx && ny<ry+TILE && ny+h>ry){ if(vy>0){ ny=ry-h; vy=0; onG=true; player.coyote=COYOTE; } else if(vy<0){ ny=ry+TILE; vy=0; if(ch==='B' && player.big){ breakBrick(rx,ry); beep(300,0.06,'triangle'); } if(ch==='?'){ hitQuestion(rx,ry); } } } }
-  return {x:nx,y:ny,vx,vy,onG};
+  // háttér
+  const grad=ctx.createLinearGradient(0,0,0,cvs.height);
+  grad.addColorStop(0,'#bfe3ff'); grad.addColorStop(1,'#ffffff');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,cvs.width,cvs.height);
+  // padló
+  ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,cvs.height-90,cvs.width,90);
+  // felhők
+  ctx.fillStyle='rgba(255,255,255,.9)';
+  for(let i=0;i<4;i++){ const x=(t*30 + i*220)% (cvs.width+200)-100, y=60+20*(i%2);
+    bubble(x,y,22); bubble(x+18,y-8,16); bubble(x+38,y,20);
+  }
+
+  // pet
+  const cx=cvs.width/2, cy=cvs.height-140, base=70, bob= Math.sin(t*2)*4;
+  const color= pet.mood==='happy' ? '#8bffb3' : pet.mood==='sad' ? '#ffd1d1' : pet.mood==='sleepy' ? '#fff2b3' : '#ffeaa7';
+  ctx.fillStyle=color; round(cx- base, cy- base + bob, base*2, base*2, base);
+  ctx.fill();
+
+  // szemek + száj
+  const eyeOff = pet.mood==='sleepy' ? 0.2 : 1;
+  ctx.fillStyle='#fff'; round(cx-22, cy-8+bob, 22,22*eyeOff, 11); ctx.fill();
+  round(cx+ 2, cy-8+bob, 22,22*eyeOff, 11); ctx.fill();
+  ctx.fillStyle='#111'; round(cx-12, cy-2+bob, 8,8*eyeOff, 4); ctx.fill();
+  round(cx+12-8, cy-2+bob, 8,8*eyeOff, 4); ctx.fill();
+  ctx.strokeStyle='#111'; ctx.lineWidth=3; ctx.beginPath();
+  if(pet.mood==='happy'){ arcSmile(cx, cy+18+bob, 16, 0.6); }
+  else if(pet.mood==='sad'){ arcSad(cx, cy+24+bob, 16, 0.6); }
+  else { ctx.moveTo(cx-10, cy+22+bob); ctx.lineTo(cx+10, cy+22+bob); }
+  ctx.stroke();
+
+  // akció flash
+  if(flashTimer>0){ flashTimer--; const alpha=flashTimer/18;
+    const col = flashType==='feed'?'#a7f3d0':flashType==='wash'?'#bae6fd':flashType==='sleep'?'#fde68a':'#fecaca';
+    ctx.fillStyle=col; ctx.globalAlpha=0.35*alpha; round(cx-95,cy-110,190,140,20); ctx.fill(); ctx.globalAlpha=1;
+  }
+
+  requestAnimationFrame(draw);
 }
-function breakBrick(rx,ry){ const idx=blocks.findIndex(b=>b.x===rx&&b.y===ry&&b.kind==='brick'); if(idx>=0) blocks.splice(idx,1); }
-function hitQuestion(rx,ry){ const b=blocks.find(bb=>bb.x===rx&&bb.y===ry&&bb.kind!=='brick'); if(!b||b.hit) return; b.hit=true; player.score+=2; beep(900,0.06,'triangle'); if(b.kind==='mush') spawnMushroom(rx+2,ry-14); }
+function round(x,y,w,h,r){ const rr=Math.min(r,Math.abs(w)/2,Math.abs(h)/2); ctx.beginPath(); ctx.moveTo(x+rr,y); ctx.arcTo(x+w,y,x+w,y+h,rr); ctx.arcTo(x+w,y+h,x,y+h,rr); ctx.arcTo(x,y+h,x,y,rr); ctx.arcTo(x,y,x+w,y,rr); ctx.closePath(); }
+function bubble(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+function arcSmile(cx,cy,r,k){ ctx.arc(cx,cy,r,Math.PI*(1-k),Math.PI*(0+k)); }
+function arcSad(cx,cy,r,k){ ctx.arc(cx,cy,r,Math.PI*(0+k),Math.PI*(1-k),true); }
 
-/* ===== Segédek ===== */
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)); function AABB(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y}
+draw();
 
-/* ===== Logika ===== */
-function update(dt){
-  if(!started){ // indulás előtt fagyasztva áll a játékos a biztonságos platformon
-    camX = 0; draw(); return; }
-  clock+=dt; timeEl.textContent=clock.toFixed(0); livesEl.textContent=player.lives; scoreEl.textContent=player.score; stateEl.textContent=player.big?'nagy':'kicsi';
+/* ======= Chat ======= */
+const logEl = $('log'), input=$('input'), send=$('send');
+function push(role,text){ const div=document.createElement('div'); div.className='msg '+role; const b=document.createElement('div'); b.className='bubble'; b.textContent=text; div.appendChild(b); logEl.appendChild(div); logEl.scrollTop=logEl.scrollHeight; }
+send.onclick=async ()=>{
+  const text=input.value.trim(); if(!text) return;
+  push('me', text); input.value=''; beep(700,.05,'triangle',.05);
 
-  if(player.coyote>0) player.coyote-=dt; if(player.jbuf>0) player.jbuf-=dt;
-  const acc = player.onGround?MOVE_ACC:AIR_ACC;
-  if(keys.left)  player.vx=Math.max(player.vx-acc*dt, -MAX_RUN);
-  if(keys.right) player.vx=Math.min(player.vx+acc*dt,  MAX_RUN);
-  if(!keys.left && !keys.right){ const s=Math.sign(player.vx); const m=Math.max(0,Math.abs(player.vx)-FRICTION*dt); player.vx=m*s; if(Math.abs(player.vx)<1) player.vx=0; }
-  if(player.vx!==0) player.facing=Math.sign(player.vx);
-  if(player.jbuf>0 && (player.onGround||player.coyote>0)){ player.vy=JUMP_V*(player.big?1.02:1); player.onGround=false; player.coyote=0; player.jbuf=0; beep(700,0.07,'square'); }
-  if(player.wantCut && player.vy<0){ player.vy*=0.55; } player.wantCut=false;
-  player.vy+=GRAV*dt; if(player.vy>800) player.vy=800;
-  player.onGround=false; const r=collide(player.x,player.y, player.w, player.h+(player.big?10:0), player.vx*dt, player.vy*dt); player.x=r.x; player.y=r.y; player.vx=r.vx; player.vy=r.vy; player.onGround=r.onG;
+  // RÖVID kontextus a backendre
+  const sys = `Te egy kedves, játékos kis virtuális háziállat vagy, a neved ${pet.name}.
+Állapotaid: éhség=${pet.hunger|0}/100, energia=${pet.energy|0}, tisztaság=${pet.clean|0}, boldogság=${pet.happy|0}.
+Válaszolj röviden (1-2 mondat), kedves hangon, emojikkal.`;
 
-  if(player.y>VH+64){ // anti-tilt: ha rögtön leesel a start után 3 mp-en belül, visszarakjuk és megállítjuk
-    if(clock<3){ respawn(); started=false; startOL.style.display='flex'; return; } else respawn(); }
+  try{
+    const res = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,user:text})});
+    if(!res.ok) throw new Error('chat hiba');
+    const data = await res.json();
+    push('ai', data.reply || '(nincs válasz)');
+  }catch(e){
+    push('ai','Hopp, nem érem el a chat szervert. 😿 (Be van állítva a proxy?)');
+  }
+};
+input.addEventListener('keydown',e=>{if(e.key==='Enter') send.click();});
 
-  // coins
-  for(let i=coins.length-1;i>=0;i--){ const c=coins[i]; c.t+=dt; if(AABB(player,c)){ coins.splice(i,1); player.score+=5; beep(1000,0.05,'triangle'); }}
-  // items
-  for(let i=items.length-1;i>=0;i--){ const it=items[i]; it.vy+=GRAV*dt; if(it.vy>800) it.vy=800; let rr=collide(it.x,it.y,it.w,it.h, it.vx*dt, it.vy*dt); it.x=rr.x; it.y=rr.y; it.vx=rr.vx; it.vy=rr.vy; if(AABB(player,it)){ items.splice(i,1); powerUp(); }}
-  // enemies
-  for(const e of enemies){ if(!e.alive) continue; e.vy+=GRAV*dt; if(e.vy>800) e.vy=800; const ahead=e.x+(e.dir>0?e.w+1:-1), feet=e.y+e.h+1; const tx=Math.floor(ahead/TILE), ty=Math.floor(feet/TILE); if(!isSolid(tileAt(tx,ty))) e.dir*=-1; e.vx=(e.shell&&e.slide)?(e.dir*140):(e.dir*(e.type==='goomba'?40:35)); const rr=collide(e.x,e.y,e.w,e.h, e.vx*dt, e.vy*dt); e.x=rr.x; e.y=rr.y; e.vx=rr.vx; e.vy=rr.vy; if(AABB(player,e)){ if(player.vy>0 && player.y+player.h <= e.y+6){ if(e.type==='goomba'){ e.alive=false; player.vy=JUMP_V*0.55; player.score+=10; beep(500,0.05,'square'); } else if(e.type==='turtle'){ if(!e.shell){ e.shell=true; e.vx=0; e.dir=(player.x<e.x?1:-1); player.vy=JUMP_V*0.55; beep(450,0.05,'square'); } else { e.slide=!e.slide; e.dir=(player.x<e.x?1:-1); player.vy=JUMP_V*0.55; beep(600,0.06,'triangle'); } } } else { if(player.big){ player.big=false; player.y-=10; player.vy=-220; beep(320,0.1,'triangle'); } else respawn(); } } }
-  for(const s of enemies){ if(!(s.type==='turtle'&&s.shell&&s.slide)&&s.alive) continue; for(const o of enemies){ if(o===s||!o.alive) continue; if(AABB(s,o)){ o.alive=false; player.score+=10; beep(420,0.04,'square'); }} }
-
-  if(goal && AABB(player,{x:goal.x-6,y:goal.y,w:goal.w+12,h:goal.h})) finish();
-  const target = clamp(player.x - VW/2 + 40, 0, W*TILE - VW); camX += (target - camX) * 0.14;
-}
-
-function powerUp(){ if(!player.big){ player.big=true; player.y-=10; beep(700,0.12,'sawtooth'); player.score+=10; }}
-function respawn(init=false){ if(!init){ player.lives--; if(player.lives<0){ gameOver(); return; } } player.x=player.spawn.x; player.y=player.spawn.y; player.vx=0; player.vy=0; player.onGround=false; player.coyote=0; player.jbuf=0; player.wantCut=false; }
-function finish(){ run=false; alert(`Nyertél! Pont: ${player.score} – Idő: ${timeEl.textContent}s`); }
-function gameOver(){ run=false; alert(`Vége! Pont: ${player.score} – Idő: ${timeEl.textContent}s`); }
-
-/* ===== Rajzolás ===== */
-function draw(){ ctx.setTransform(SCALE,0,0,SCALE,0,0); ctx.clearRect(0,0,VW,VH); drawBG();
-  for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const ch=tileAt(x,y); const px=x*TILE - camX, py=y*TILE; if(px<-TILE||px>VW||py<-TILE||py>VH) continue; if(ch==='#'||ch==='=') ground(px,py); if(ch==='|') pipe(px,py); if(ch==='B') brick(px,py); if(ch==='?'){ const b=blocks.find(bb=>bb.x===x*TILE&&bb.y===y*TILE&&bb.kind!=='brick'); qblock(px,py,b&&b.hit); } if(ch==='G') flag(px+2,py-96); }
-  for(const c of coins){ const px=c.x-camX, py=c.y; coin(px,py,c.t); }
-  for(const b of blocks){ const px=b.x-camX, py=b.y; if(b.kind==='brick') brick(px,py); else qblock(px,py,b.hit); }
-  for(const it of items){ mush(it.x-camX,it.y); }
-  for(const e of enemies){ if(!e.alive) continue; const px=e.x-camX, py=e.y; if(e.type==='goomba') goomba(px,py); else turtle(px,py,e.shell,e.slide); }
-  playerDraw(player.x-camX, player.y, player.big, player.facing);
-}
-function drawBG(){ ctx.fillStyle='#e8f6ff'; ctx.fillRect(0,VH-60,VW,60); ctx.fillStyle=getVar('--hill1'); tri(80-camX*0.3,VH-60,100); tri(300-camX*0.25,VH-60,140); tri(560-camX*0.2,VH-60,120); ctx.fillStyle=getVar('--hill2'); tri(180-camX*0.2,VH-60,70); tri(420-camX*0.18,VH-60,90); cloud(120-camX*0.1,60); cloud(360-camX*0.12,40); cloud(640-camX*0.08,70); }
-function tri(cx,by,s){ ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx-s,by); ctx.lineTo(cx,by-s); ctx.closePath(); ctx.fill(); }
-function cloud(x,y){ bub(x,y,12); bub(x+12,y-6,10); bub(x+26,y,12); bub(x+38,y-4,8); } function bub(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.95)'; ctx.fill(); }
-function ground(x,y){ ctx.fillStyle=getVar('--ground1'); ctx.fillRect(x,y,16,16); ctx.fillStyle=getVar('--ground2'); ctx.fillRect(x,y+12,16,4); }
-function brick(x,y){ ctx.fillStyle=getVar('--brick1'); rr(x,y,16,16,2); ctx.fill(); ctx.fillStyle=getVar('--brick2'); ctx.fillRect(x,y+12,16,4); }
-function qblock(x,y,hit){ ctx.fillStyle = hit?getVar('--qHit'):getVar('--q1'); rr(x,y,16,16,3); ctx.fill(); ctx.fillStyle=getVar('--q2'); ctx.fillRect(x+6,y+4,2,2); ctx.fillRect(x+8,y+4,2,2); ctx.fillRect(x+6,y+8,2,2); ctx.fillRect(x+8,y+8,2,2); ctx.fillRect(x+7,y+12,2,2); }
-function pipe(x,y){ ctx.fillStyle=getVar('--pipe1'); ctx.fillRect(x,y,16,16); ctx.fillStyle=getVar('--pipe2'); ctx.fillRect(x+2,y+11,12,5); }
-function coin(x,y,t){ ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(t*8)*0.2); rr(-6,-6,12,12,6); ctx.fillStyle=getVar('--coin'); ctx.fill(); ctx.restore(); }
-function flag(x,y){ ctx.fillStyle='#9ca3af'; ctx.fillRect(x,y,4,96); ctx.fillStyle=getVar('--flag'); ctx.beginPath(); ctx.moveTo(x+4,y+14); ctx.lineTo(x+28,y+8); ctx.lineTo(x+28,y+22); ctx.closePath(); ctx.fill(); ctx.fillStyle=getVar('--flag2'); ctx.fillRect(x-6,y+92,16,4); }
-function goomba(x,y){ ctx.fillStyle=getVar('--enemy'); rr(x,y,14,12,3); ctx.fill(); ctx.fillStyle=getVar('--eye'); ctx.fillRect(x+3,y+4,2,2); ctx.fillRect(x+9,y+4,2,2); }
-function turtle(x,y,shell,slide){ if(shell){ ctx.fillStyle=getVar('--shell1'); rr(x,y,14,10,4); ctx.fill(); ctx.fillStyle=getVar('--shell2'); ctx.fillRect(x+2,y+6,10,3); } else { ctx.fillStyle=getVar('--shell1'); rr(x,y,14,14,4); ctx.fill(); ctx.fillStyle=getVar('--shell2'); ctx.fillRect(x+2,y+10,10,3); }}
-function mush(x,y){ ctx.fillStyle='#ff4d4d'; rr(x,y,12,12,4); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillRect(x+3,y+3,2,2); ctx.fillRect(x+7,y+5,2,2); }
-function playerDraw(x,y,big,face){ const h=big?24:14, w=12; ctx.fillStyle=getVar('--player'); rr(x,y-h,w,h,3); ctx.fill(); ctx.fillStyle=getVar('--hat'); ctx.fillRect(x,y-h-3,w,3); ctx.fillStyle=getVar('--eye'); ctx.fillRect(x+8,y-h+3,2,2); }
-function rr(x,y,w,h,r){ const t=Math.min(r,Math.abs(w)/2,Math.abs(h)/2); ctx.beginPath(); ctx.moveTo(x+t,y); ctx.arcTo(x+w,y,x+w,y+h,t); ctx.arcTo(x+w,y+h,x,y+h,t); ctx.arcTo(x,y+h,x,y,t); ctx.arcTo(x,y,x+w,y,t); ctx.closePath(); }
-function getVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-
-/* ===== Ciklus ===== */
-function frame(){ const now=performance.now()/1000; let dt=now-last; last=now; acc+=dt; if(dt>0.25) acc=0; while(acc>=DT){ update(DT); acc-=DT; } draw(); if(run) requestAnimationFrame(frame); }
-
-/* ===== UI ===== */
- gid('reset').onclick=()=>{ player.lives=3; player.score=0; player.big=false; clock=0; build(); };
- gid('pause').onclick=()=>{ run=!run; if(run){ last=performance.now()/1000; requestAnimationFrame(frame);} };
-
-/* ===== Start ===== */
-function init(){ build(); last=performance.now()/1000; requestAnimationFrame(frame); }
-document.addEventListener('DOMContentLoaded', init);
+// első interakciónál indítsd az audiot
+addEventListener('pointerdown',()=>{ if(AC && AC.state==='suspended') AC.resume(); }, {once:true});
 </script>
 </body>
 </html>
-
-
-
