@@ -35,7 +35,9 @@
 // =============================================================
 const cvs=document.getElementById('game');
 const ctx=cvs.getContext('2d');
-ctx.imageSmoothingEnabled=false;
+// --- SAFETY: ha valamiért 0 a méret, állítsunk be fix értéket, hogy ne legyen üres a vászon
+if (!cvs.width || !cvs.height) { cvs.width = 960; cvs.height = 540; }
+ctx.imageSmoothingEnabled = false;
 
 /* ====== Világ méret, csempe, skála ====== */
 const TILE=16, SCALE=3;              // logikai 16px csempe, 3x rajzolás
@@ -228,6 +230,8 @@ function gameOver(){ run=false; alert(`Vége! Pont: ${player.score} – Idő: ${
 function draw(){
   // skála
   ctx.setTransform(SCALE,0,0,SCALE,0,0);
+  // teljes törlés biztosan a skálázott térben
+  ctx.clearRect(0,0,VW,VH);
   // háttér
   ctx.fillStyle="#a6e4ff"; ctx.fillRect(0,0,VW,VH);
   // parallax dombok és felhők
@@ -292,8 +296,17 @@ document.getElementById('reset').onclick=()=>{ player.lives=3; player.score=0; c
 document.getElementById('pause').onclick=()=>{ run=!run; if(run) { last=performance.now()/1000; requestAnimationFrame(frame); } };
 
 /* ====== Start ====== */
-function init(){ build(); last=performance.now()/1000; requestAnimationFrame(frame); }
-init();
+function init(){
+  console.log('init() start');
+  build();
+  last = performance.now()/1000;
+  run = true;
+  // Azonnali első frame, hogy a háttér látszódjon akkor is, ha a loop késik
+  frame();
+}
+// Várjuk meg, hogy a DOM készen álljon (különösen mobilon / lassabb gépen)
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+
