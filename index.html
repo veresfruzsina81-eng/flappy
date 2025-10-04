@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flappy Clone – Vanilla JS + Hang</title>
+  <style>
+    :root{
+      --bg:#0ea5e9;--ground:#7c3aed;--pipe:#22c55e;--bird:#fbbf24;--ink:#0f172a;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#60a5fa);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;color:var(--ink)}
+    .wrap{display:grid;place-items:center;height:100%}
+    canvas{background:transparent;display:block;max-width:92vw;max-height:82vh;border-radius:16px;box-shadow:0 20px 60px rgba(2,6,23,.25)}
+    .hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-weight:800;font-size:24px;text-shadow:0 2px 0 rgba(0,0,0,.15)}
+    .btnbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+    button{border:0;border-radius:12px;padding:10px 14px;background:#ffffffcc;backdrop-filter:blur(6px);font-weight:700;cursor:pointer}
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.45);}
+    .card{background:white;padding:18px 22px;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);text-align:center;max-width:92vw}
+    .card h1{margin:6px 0 4px;font-size:24px}
+    .muted{color:#475569}
+    .kbd{font-family:ui-monospace,Consolas,monospace;background:#e2e8f0;border-radius:8px;padding:2px 6px;margin:0 2px;display:inline-block}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">Pont: <span id="score">0</span> • Rekord: <span id="best">0</span></div>
+    <canvas id="game" width="450" height="700"></canvas>
+    <div class="btnbar">
+      <button id="tap">Ugrás (tap/space)</button>
+      <button id="pause">Szünet</button>
+      <button id="restart">Újra</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="over">
+    <div class="card">
+      <h1>Vége! 💥</h1>
+      <p class="muted">Pontszám: <b id="finalScore">0</b> • Rekord: <b id="finalBest">0</b></p>
+      <p class="muted">Nyomd meg a <span class="kbd">Space</span>-t vagy a <b>Ugrás</b> gombot az újrakezdéshez.</p>
+      <button id="playAgain">Újra</button>
+    </div>
+  </div>
+
+  <script>
+  const cvs=document.getElementById('game');
+  const ctx=cvs.getContext('2d');
+  const rand=(a,b)=>Math.random()*(b-a)+a;
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+  // --- Hangok ---
+  const sndFlap=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+  const sndPoint=new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+  const sndHit=new Audio("https://actions.google.com/sounds/v1/cartoon/clang.ogg");
+
+  let state='ready';
+  let score=0; let best=Number(localStorage.getItem('flappy_best')||0);
+  const scoreEl=document.getElementById('score');
+  const bestEl=document.getElementById('best'); bestEl.textContent=best;
+
+  const G=0.5; const JUMP=-8.5; const PIPE_GAP=150; const PIPE_W=68; const PIPE_SPEED=2.8;
+  const world={w:450,h:700,groundH:64,t:0};
+  const bird={x:120,y:world.h/2,v:0,r:16,rot:0};
+  let pipes=[]; let spawnTimer=0;
+
+  function flap(){
+    if(state==='ready'){start();return;}
+    if(state==='over'){restart();return;}
+    if(state==='pause'){return;}
+    bird.v=JUMP; sndFlap.currentTime=0; sndFlap.play();
+  }
+  function start(){state='play'; document.getElementById('over').style.display='none';}
+  function restart(){score=0; scoreEl.textContent=0; spawnTimer=0; pipes=[]; bird.x=120; bird.y=world.h/2; bird.v=0; bird.rot=0; state='ready'; document.getElementById('over').style.display='none';}
+  function gameOver(){state='over'; sndHit.play(); document.getElementById('finalScore').textContent=score; if(score>best){best=score; localStorage.setItem('flappy_best',best);} document.getElementById('finalBest').textContent=best; bestEl.textContent=best; document.getElementById('over').style.display='flex';}
+
+  window.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();} if(e.code==='KeyP'){togglePause();}});
+  cvs.addEventListener('pointerdown',flap);
+  document.getElementById('tap').addEventListener('click',flap);
+  document.getElementById('restart').addEventListener('click',restart);
+  document.getElementById('playAgain').addEventListener('click',()=>{restart();start();});
+  document.getElementById('pause').addEventListener('click',togglePause);
+  function togglePause(){if(state==='play'){state='pause'}else if(state==='pause'){state='play'}}
+
+  function addPipe(){const minTop=60,maxTop=world.h-world.groundH-(PIPE_GAP+60);const topH=Math.floor(rand(minTop,maxTop));pipes.push({x:world.w+PIPE_W,topH,passed:false});}
+
+  function update(){if(state==='play'){bird.v+=G;bird.y+=bird.v;bird.rot=clamp(bird.v*3,-25,70);spawnTimer-=1;if(spawnTimer<=0){addPipe();spawnTimer=120;}for(let i=pipes.length-1;i>=0;i--){const p=pipes[i];p.x-=PIPE_SPEED;if(!p.passed&&p.x+PIPE_W<bird.x-bird.r){p.passed=true;score++;scoreEl.textContent=score;sndPoint.play();}if(p.x+PIPE_W<-10){pipes.splice(i,1);}}if(checkCollisions()){gameOver();}}draw();requestAnimationFrame(update);}
+
+  function checkCollisions(){if(bird.y+bird.r>world.h-world.groundH)return true;if(bird.y-bird.r<0)return true;for(const p of pipes){const inX=bird.x+bird.r>p.x&&bird.x-bird.r<p.x+PIPE_W;if(inX){const gapTop=p.topH;const gapBot=p.topH+PIPE_GAP;if(bird.y-bird.r<gapTop||bird.y+bird.r>gapBot){return true;}}}return false;}
+
+  function drawBackground(){const w=world.w,h=world.h;ctx.save();ctx.fillStyle='rgba(12,3,45,.12)';ctx.fillRect(0,h-world.groundH-6,w,6);ctx.fillStyle='white';ctx.globalAlpha=0.6;ctx.fillRect(0,h-world.groundH,w,world.groundH);ctx.globalAlpha=1;ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--ground');ctx.fillRect(0,h-world.groundH,w,8);ctx.restore();}
+  function drawBird(){const {x,y,r}=bird;ctx.save();ctx.translate(x,y);ctx.rotate(bird.rot*Math.PI/180);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bird');ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.restore();}
+  function drawPipes(){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--pipe');for(const p of pipes){ctx.fillRect(p.x,0,PIPE_W,p.topH);const botY=p.topH+PIPE_GAP;ctx.fillRect(p.x,botY,PIPE_W,world.h-world.groundH-botY);}}
+  function draw(){world.t++;ctx.clearRect(0,0,world.w,world.h);drawBackground();drawPipes();drawBird();if(state==='ready')drawHint('Koppints vagy Space az induláshoz');if(state==='pause')drawHint('Szünet – folytatáshoz nyomj P-t');}
+  function drawHint(text){ctx.save();ctx.font='bold 20px system-ui, Segoe UI, Inter';ctx.textAlign='center';ctx.fillStyle='rgba(15,23,42,.9)';ctx.fillText(text,world.w/2,world.h*0.12);ctx.restore();}
+
+  function syncWorld(){const rect=cvs.getBoundingClientRect();world.w=Math.round(rect.width);world.h=Math.round(rect.height);}syncWorld();new ResizeObserver(()=>{syncWorld();}).observe(cvs);
+  requestAnimationFrame(update);
+  </script>
+</body>
+</html>
