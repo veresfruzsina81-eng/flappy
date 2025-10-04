@@ -1,403 +1,299 @@
 <!doctype html>
 <html lang="hu">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Mini Platformer – hosszú pálya, mozgó platformok, boss, hangok (fix)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pixel Platformer – közel Mario‑feeling (egyfájlos)</title>
 <style>
-:root{
-  --ink:#0f172a;--hud:#ffffffcc;--sky:#8fd3ff;--ground:#7c3aed;
-  --brick:#b65a2a;--brickDark:#9e4d22;--qblock:#f7b500;--qmark:#8a5400;
-  --player:#ffd34a;--acc:#ffb703;--enemy:#ef4444;--coin:#22c55e;
-  --goal:#10b981;--boss:#111827
-}
-html,body{height:100%;margin:0;background:var(--sky);font-family:system-ui,Segoe UI,Inter,Roboto,Arial,sans-serif;color:var(--ink)}
-.wrap{display:grid;place-items:center;height:100%}
-canvas{display:block;max-width:96vw;max-height:86vh;border-radius:16px;box-shadow:0 20px 70px rgba(2,6,23,.25);background:linear-gradient(180deg,#bfe8ff,#eaf6ff)}
-.hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:16px;padding:8px 12px;background:var(--hud);border-radius:12px;font-weight:800;align-items:center}
-.controls{display:flex;gap:8px;align-items:center}
-.controls input[type=range]{width:120px}
-.btnbar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
-button{border:0;border-radius:12px;padding:10px 14px;background:#ffffffcc;backdrop-filter:blur(6px);font-weight:700;cursor:pointer}
-.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.5)}
-.card{background:white;padding:20px 24px;border-radius:16px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25)}
-.card h1{margin:6px 0 8px}
-.kbd{font-family:ui-monospace,Consolas,monospace;background:#e2e8f0;border-radius:8px;padding:2px 6px;margin:0 2px;display:inline-block}
+  :root{
+    --sky:#8bd3ff; --sky2:#cfeeff; --hill:#7cc56e; --hill2:#5aa84c;
+    --ground:#7c4e1d; --groundTop:#5a3513; --brick:#b0492e; --brick2:#912f1b;
+    --q:#f7c84d; --q2:#b98524; --coin:#ffd94d; --flag:#34d399; --pipe:#3aa35e; --pipe2:#2b7a44;
+    --player:#ffcc4d; --hat:#e59c00; --enemy:#e74c3c; --ink:#0f172a; --hud:#ffffffcc;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(#a6e4ff,#dff5ff);color:var(--ink);font:14px/1.4 system-ui,Segoe UI,Inter,Roboto,Arial,sans-serif}
+  #wrap{display:grid;place-items:center;height:100%}
+  canvas{background:linear-gradient(180deg,var(--sky),var(--sky2));border-radius:14px;box-shadow:0 16px 60px rgba(2,6,23,.25);image-rendering:pixelated;image-rendering: crisp-edges;}
+  .hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:16px;padding:8px 12px;background:var(--hud);border-radius:12px;font-weight:800;align-items:center}
+  .btnbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+  button{border:0;border-radius:10px;padding:8px 12px;background:#ffffffcc;backdrop-filter:blur(4px);font-weight:700;cursor:pointer}
+  .kbd{font-family:ui-monospace,Consolas,monospace;background:#e2e8f0;border-radius:6px;padding:2px 6px;margin:0 2px;display:inline-block}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hud">
-    Élet: <span id="lives">3</span> • Pont: <span id="score">0</span> • Idő: <span id="time">0</span>s • Lőszer: <span id="ammo">0</span>
-    <span class="controls">
-      Hangerő <input id="vol" type="range" min="0" max="1" step="0.01" value="0.35"/>
-      <button id="music">Zene: BE</button>
-    </span>
-  </div>
-  <canvas id="game" width="960" height="540" aria-label="Mini platformer"></canvas>
-  <div class="btnbar"><button id="restart">Újra</button><button id="pause">Szünet</button></div>
+<div id="wrap">
+  <div class="hud">Élet: <span id="lives">3</span> • Pont: <span id="score">0</span> • Idő: <span id="time">0</span>s</div>
+  <canvas id="game" width="960" height="540" aria-label="Pixel platformer"></canvas>
+  <div class="btnbar"><button id="reset">Újra</button><button id="pause">Szünet</button></div>
 </div>
-
-<div class="overlay" id="over">
-  <div class="card">
-    <h1 id="title">Vége</h1>
-    <p id="desc"></p>
-    <p>Irányítás: <span class="kbd">A</span>/<span class="kbd">D</span> vagy <span class="kbd">←</span>/<span class="kbd">→</span> – mozgás,
-       <span class="kbd">Space</span> – ugrás, <span class="kbd">K</span> – lövés (ha van lőszer)</p>
-    <button id="again">Újra</button>
-  </div>
-</div>
-
 <script>
-/* ===== Canvas & HiDPI ===== */
-const cvs=document.getElementById('game'), ctx=cvs.getContext('2d');
-function fit(){const r=Math.max(1,Math.floor(devicePixelRatio||1));const w=cvs.clientWidth||cvs.width,h=cvs.clientHeight||cvs.height;cvs.width=w*r;cvs.height=h*r;ctx.setTransform(r,0,0,r,0,0);}fit();addEventListener('resize',fit);
-const VIEW_W=960, VIEW_H=540; let camX=0;
+// =============================================================
+// "Mario‑feeling" platformer – játékosbarát fizika (coyote time,
+// jump buffer, változó ugrás), finom kamera, parallax, egyszerű
+// ellenfelek, kérdőblokk, érmek, zászló.
+// Minden egy fájlban, külső asset nélkül.
+// =============================================================
+const cvs=document.getElementById('game');
+const ctx=cvs.getContext('2d');
+ctx.imageSmoothingEnabled=false;
 
-/* ===== WebAudio ===== */
-const AC = window.AudioContext? new AudioContext():null;
-const master=AC?AC.createGain():null; if(master){master.gain.value=0.35; master.connect(AC.destination);} 
-function sfx(freq=440,dur=0.07,type='square',gain=0.12){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(); const g=AC.createGain(); o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g).connect(master); o.start(t); o.stop(t+dur); }
-function sweep(f1,f2,dur,type='sawtooth',gain=0.12){ if(!AC) return; const t=AC.currentTime; const o=AC.createOscillator(); const g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(f2,t+dur); g.gain.value=gain; o.connect(g).connect(master); o.start(t); o.stop(t+dur); }
-let musicOn=true; const musicBtn=document.getElementById('music'); const volEl=document.getElementById('vol');
-function startMusic(){ if(!AC||!musicOn) return; let i=0; const seq=[261,329,392,523,392,329]; (function loop(){ if(!musicOn) return; const t=AC.currentTime; const o=AC.createOscillator(), g=AC.createGain(); o.type='triangle'; o.frequency.value=seq[i%seq.length]; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.06,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.38); o.connect(g).connect(master); o.start(t); o.stop(t+0.4); i++; setTimeout(loop,420); })(); }
-if(AC){ addEventListener('pointerdown',()=>{if(AC.state==='suspended') AC.resume(); startMusic();},{once:true}); }
-musicBtn.onclick=()=>{ musicOn=!musicOn; musicBtn.textContent='Zene: '+(musicOn?'BE':'KI'); if(musicOn) startMusic(); };
-volEl.oninput=()=>{ if(master) master.gain.value=parseFloat(volEl.value); };
+/* ====== Világ méret, csempe, skála ====== */
+const TILE=16, SCALE=3;              // logikai 16px csempe, 3x rajzolás
+const VW=Math.floor(cvs.width/SCALE); // logikai nézet szélesség
+const VH=Math.floor(cvs.height/SCALE);
+let camX=0, camY=0;
 
-/* ===== HUD refs ===== */
+/* ====== HUD ====== */
 const L=id=>document.getElementById(id);
-const livesEl=L('lives'), scoreEl=L('score'), timeEl=L('time'), ammoEl=L('ammo');
+const livesEl=L('lives'), scoreEl=L('score'), timeEl=L('time');
 
-/* ===== World & Physics ===== */
-const WORLD_W=3000, H=540, floorY=H-60; // hosszú világ
-const G=0.9, FRICTION=0.82, MOVE=0.85, MAX_VX=4.4, JUMP=-15;
-let t=0, running=true;
+/* ====== Fizika (hangolva klasszikus platformerhez) ====== */
+const GRAV=2000;          // px/s^2 (logikai px)
+const MOVE_ACC=2200;      // gyorsulás
+const MAX_RUN=180;        // max vízszintes sebesség (px/s)
+const AIR_ACC=1400;       // levegőben gyengébb gyorsulás
+const FRICTION=1800;      // fékezés földön
+const JUMP_V=-720;        // kezdeti ugrósebesség (kb. 4 csempéig)
+const COYOTE=0.12;        // coyote time (mp)
+const JUMP_BUF=0.12;      // jump buffer (mp)
 
-/* ===== Player ===== */
-const player={x:60,y:floorY-48,w:26,h:40,vx:0,vy:0,onGround:false,faces:1,lives:3,score:0,anim:0,frame:0,state:'idle',ammo:0};
+/* ====== Időzítés ====== */
+let last=performance.now()/1000; let acc=0; const DT=1/60; // fix 60 FPS integrálás
+let run=true; let clock=0;
 
-/* ===== Terrain ===== */
-// Talaj szegmensek (köztük szakadékok)
-const groundSegs=[[0,520],[640,440],[1160,280],[1500,260],[1900,320],[2350,300]];
-// Platformok – statikus + mozgó
-const platforms=[
-  {x:240,y:floorY-110,w:140,h:16,type:'brick'},
-  {x:560,y:floorY-170,w:120,h:16,type:'brick'},
-  {x:980,y:floorY-130,w:120,h:16,type:'brick'},
-  {x:1320,y:floorY-210,w:160,h:16,type:'brick'},
-  moving(1680,floorY-160,120,16,1600,1880,1.2),
-  moving(2100,floorY-220,140,16,2060,2360,1.6),
-  moving(2580,floorY-180,160,16,2520,2860,1.3)
+/* ====== Játékos ====== */
+const player={ x:0, y:0, w:12, h:14, vx:0, vy:0, onGround:false, facing:1,
+  lives:3, score:0, coyote:0, jbuf:0, wantCut:false, spawn:{x:0,y:0} };
+
+/* ====== Csempék & pálya ====== */
+// Jelölések: . üres, # talaj, = lebegő blokk, ? kérdőblokk, c érme,
+// e ellenség, p játékos, g cél, |/‾/L/J/I cső/variációk (vizuál)
+const LEVEL=[
+  "........................................................................",
+  "........................................................................",
+  "..............c.................c..................c.................g....",
+  ".............===..............====..............======..............|||..",
+  "....................c...............................................|||..",
+  "......c....................?..................c.....................|||..",
+  "..............===..............====..............======...................",
+  "........................................................................",
+  ".....########.........................##########.........................",
+  "###############.............#######..#############.............#########",
+  "###############.....e.......#######..#############.....e.......#########",
+  "###############pppppppppppppp#######..#############ppppppppppppp########",
 ];
-function moving(x,y,w,h,minX,maxX,speed){return{x,y,w,h,type:'moving',minX,maxX,speed,dir:1}};
+// Magyarázat: alacsony plafon nincs, a legmagasabb platform ~3‑3.5 csempe,
+// minden ugrás teljesíthető a fenti JUMP_V mellett. A cél (g) a jobb felső
+// részen; csövek csak dísz (|||), de szintérzetet ad.
 
-/* ===== Blocks, coins, serum ===== */
-const qblocks=[
-  {x:280,y:floorY-110-22,w:20,h:20,hit:false,type:'coin'},
-  {x:1010,y:floorY-130-22,w:20,h:20,hit:false,type:'coin'},
-  {x:2120,y:floorY-220-22,w:20,h:20,hit:false,type:'serum'}
-];
-const coins=[{x:600,y:floorY-170-28,w:14,h:14},{x:1360,y:floorY-210-28,w:14,h:14},{x:1740,y:floorY-160-28,w:14,h:14},{x:2640,y:floorY-180-28,w:14,h:14}];
+const H=LEVEL.length, W=LEVEL[0].length;
+function tileAt(tx,ty){ if(ty<0||ty>=H||tx<0||tx>=W) return '.'; return LEVEL[ty][tx]; }
+function isSolid(ch){ return ch==='#' || ch==='=' || ch==='|' || ch==='‾' || ch==='L' || ch==='J' || ch==='I'; }
 
-/* ===== Enemies ===== */
-const enemies=[
-  patrol(380,floorY-20,22,20,340,560,1.1),
-  patrol(1080,floorY-20,22,20,1060,1160,1.2),
-  patrol(1720,floorY-20,22,20,1700,1820,1.2),
-  fly(900,floorY-260,22,18,820,1040,1.3,20),
-  fly(2300,floorY-300,22,18,2240,2440,1.5,28)
-];
-let fallSpawners=[ {x:1450, interval:240, timer:0},{x:2500, interval:200, timer:0} ];
-function patrol(x,y,w,h,minX,maxX,speed){return{type:'patrol',x,y,w,h,minX,maxX,speed,dir:1,vx:speed,vy:0,onGround:false,active:true}};
-function fly(x,y,w,h,minX,maxX,speed,amp){return{type:'fly',x,y,w,h,minX,maxX,speed,dir:1,t:0,amp,active:true}};
-function falling(x){return{type:'fall',x,y:-40,w:20,h:20,vx:0,vy:2.5,active:true}};
+/* ====== Objektumok a pályából ====== */
+const coins=[]; const blocks=[]; const enemies=[]; let goal=null;
+function build(){ coins.length=0; blocks.length=0; enemies.length=0; goal=null;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c=LEVEL[y][x];
+    if(c==='c') coins.push({x:x*TILE+8,y:y*TILE+8,w:8,h:8,t:0});
+    if(c==='?') blocks.push({x:x*TILE,y:y*TILE,w:16,h:16,hit:false});
+    if(c==='e') enemies.push(makeGoomba(x*TILE+0,y*TILE-2));
+    if(c==='g') goal={x:x*TILE+2,y:y*TILE-96,w:8,h:96};
+    if(c==='p'){ player.spawn.x=x*TILE; player.spawn.y=(y-1)*TILE-2; }
+  }
+  respawn(true);
+}
 
-/* ===== Boss & Goal ===== */
-const boss={x:WORLD_W-320,y:floorY-120,w:58,h:64,vx:0,vy:0,hp:14,alive:true,cd:0};
-const goal={x:WORLD_W-60,y:floorY-180,w:8,h:180};
+function makeGoomba(x,y){ return {x,y,w:14,h:12,vx:30,vy:0,onGround:false,alive:true,dir:1,turnCD:0}; }
 
-/* ===== Bullets ===== */
-const bullets=[]; // {x,y,w,h,vx,vy,who:'player'|'enemy'}
-
-/* ===== Input ===== */
-const keys={left:false,right:false,jump:false,shoot:false};
-let wantJump=false; // \u2190 csak friss lenyomásra ugorjon (anti "pattogás" a peremen)
+/* ====== Beviteli vezérlés ====== */
+const keys={left:0,right:0,jump:0};
 addEventListener('keydown',e=>{
-  if(['ArrowLeft','KeyA'].includes(e.code))keys.left=true;
-  if(['ArrowRight','KeyD'].includes(e.code))keys.right=true;
-  if(e.code==='Space'){ e.preventDefault(); if(!keys.jump){ wantJump=true; } keys.jump=true; }
-  if(e.code==='KeyK') keys.shoot=true;
+  if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=1;
+  if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=1;
+  if(e.code==='Space'){ if(!keys.jump) player.jbuf=JUMP_BUF; keys.jump=1; e.preventDefault(); }
 });
 addEventListener('keyup',e=>{
-  if(['ArrowLeft','KeyA'].includes(e.code))keys.left=false;
-  if(['ArrowRight','KeyD'].includes(e.code))keys.right=false;
-  if(e.code==='Space'){ keys.jump=false; }
-  if(e.code==='KeyK') keys.shoot=false;
+  if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=0;
+  if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=0;
+  if(e.code==='Space'){ keys.jump=0; player.wantCut=true; }
 });
 
-/* ===== UI ===== */
-id('restart').onclick=()=>reset();
-id('pause').onclick=()=>{running=!running; if(running) loop();};
-id('again').onclick=()=>{hide(); reset();};
-function id(x){return document.getElementById(x)}
-function show(t,d){id('title').textContent=t; id('desc').textContent=d; id('over').style.display='flex';}
-function hide(){id('over').style.display='none';}
+/* ====== Ütközés csempékkel ====== */
+function collideAABB(x,y,w,h, vx,vy){
+  // lépésenként vizsgálunk – egyszerű és stabil
+  let px=x+vx, py=y; // X
+  const minTX=Math.floor(Math.min(x,px)/TILE)-1, maxTX=Math.floor(Math.max(x+w,px+w)/TILE)+1;
+  const minTY=Math.floor(y/TILE)-1, maxTY=Math.floor((y+h)/TILE)+1;
+  for(let ty=minTY; ty<=maxTY; ty++) for(let tx=minTX; tx<=maxTX; tx++){
+    if(!isSolid(tileAt(tx,ty))) continue; const rx=tx*TILE, ry=ty*TILE;
+    if(px < rx+TILE && px+w > rx && py < ry+TILE && py+h > ry){
+      if(vx>0) px=rx-w; else if(vx<0) px=rx+TILE; vx=0;
+    }
+  }
+  py+=vy; // Y
+  for(let ty=minTY; ty<=maxTY; ty++) for(let tx=minTX; tx<=maxTX; tx++){
+    if(!isSolid(tileAt(tx,ty))) continue; const rx=tx*TILE, ry=ty*TILE;
+    if(px < rx+TILE && px+w > rx && py < ry+TILE && py+h > ry){
+      if(vy>0){ py=ry-h; vy=0; player.onGround=true; player.coyote=COYOTE; }
+      else if(vy<0){ py=ry+TILE; vy=0; // fejelt -> kérdőblokk
+        if(tileAt(tx,ty)==='?'){ const b=blocks.find(bb=>bb.x===rx && bb.y===ry); if(b && !b.hit){ b.hit=true; player.score+=2; }
+      }
+    }
+  }
+  return {x:px,y:py,vx,vy};
+}
 
-/* ===== Helpers ===== */
+/* ====== Frissítés ====== */
+function update(dt){
+  clock+=dt; timeEl.textContent=clock.toFixed(0); livesEl.textContent=player.lives; scoreEl.textContent=player.score;
+
+  // — coyote & buffer
+  if(player.coyote>0) player.coyote-=dt; if(player.jbuf>0) player.jbuf-=dt;
+
+  // — vízszintes mozgás
+  const acc = player.onGround ? MOVE_ACC : AIR_ACC;
+  if(keys.left)  player.vx = Math.max(player.vx - acc*dt, -MAX_RUN);
+  if(keys.right) player.vx = Math.min(player.vx + acc*dt,  MAX_RUN);
+  if(!keys.left && !keys.right){ // fékezés
+    const s=Math.sign(player.vx); const m=Math.max(0, Math.abs(player.vx) - FRICTION*dt);
+    player.vx = m * s; if(Math.abs(player.vx)<1) player.vx=0;
+  }
+  if(player.vx!==0) player.facing = Math.sign(player.vx);
+
+  // — ugrás indítás (coyote + buffer)
+  if(player.jbuf>0 && (player.onGround || player.coyote>0)){
+    player.vy = JUMP_V; player.onGround=false; player.coyote=0; player.jbuf=0; // elhasználjuk
+  }
+  // — változó ugrás: elengedéskor levágjuk
+  if(player.wantCut && player.vy<0){ player.vy *= 0.55; }
+  player.wantCut=false;
+
+  // — gravitáció
+  player.vy += GRAV*dt; if(player.vy>800) player.vy=800;
+
+  // — integrálás + ütközés
+  player.onGround=false; const col = collideAABB(player.x,player.y,player.w,player.h, player.vx*dt, player.vy*dt);
+  player.x=col.x; player.y=col.y; player.vx=col.vx; player.vy=col.vy;
+
+  // — pályaszél / leesés
+  if(player.y>VH+64) damage(true);
+  if(player.x<0) player.x=0; if(player.x>W*TILE-player.w) player.x=W*TILE-player.w;
+
+  // — coinok
+  for(let i=coins.length-1;i>=0;i--){ const c=coins[i]; c.t+=dt; if(hit(player,c)) { coins.splice(i,1); player.score+=5; } }
+
+  // — ellenségek
+  for(const e of enemies){ if(!e.alive) continue;
+    // egyszerű él-detekció + falfordulás
+    e.vy += GRAV*dt; if(e.vy>800) e.vy=800;
+    // nézzen a lába elé
+    const ahead = e.x + (e.dir>0 ? e.w+1 : -1);
+    const feetY = e.y + e.h + 1;
+    const tx = Math.floor(ahead/TILE), ty=Math.floor(feetY/TILE);
+    if(!isSolid(tileAt(tx,ty))) e.dir*=-1;
+    e.vx = 40*e.dir;
+    // ütközések
+    const r=collideAABB(e.x,e.y,e.w,e.h, e.vx*dt, e.vy*dt);
+    e.x=r.x; e.y=r.y; e.vx=r.vx; e.vy=r.vy;
+    // játékos interakció
+    if(hit(player,e)){
+      if(player.vy>0 && player.y+player.h<=e.y+6){ e.alive=false; player.vy=JUMP_V*0.55; player.score+=10; }
+      else damage();
+    }
+  }
+
+  // — cél
+  if(goal && aabb(player,{x:goal.x-6,y:goal.y,w:goal.w+12,h:goal.h})) finish();
+
+  // — kamera (deadzone + simítás)
+  const dz=80; const targetX = clamp(player.x - VW/2 + player.w/2, 0, W*TILE - VW);
+  camX += (targetX - camX) * 0.12; camY=0; // nincs vertikális követés most
+}
+
+/* ====== Segéd ====== */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function aabb(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y}
-function solids(){ const arr=[]; groundSegs.forEach(([gx,gw])=>arr.push({x:gx,y:floorY,w:gw,h:60})); return [...arr, ...platforms, ...qblocks]; }
-function isSolidAt(x,y){ for(const p of solids()){ if(x>=p.x && x<=p.x+p.w && y>=p.y && y<=p.y+p.h) return true; } return false; }
-function onTopOf(a,b){ const horiz = a.x + a.w > b.x && a.x < b.x + b.w; const feet = Math.abs((a.y + a.h) - b.y) <= 3; return horiz && feet; }
+function hit(a,b){return aabb({x:a.x,y:a.y,w:a.w,h:a.h},{x:b.x,y:b.y,w:b.w,h:b.h});}
 
-/* ===== Reset ===== */
-function reset(){
-  Object.assign(player,{x:60,y:floorY-48,vx:0,vy:0,onGround:false,faces:1,lives:3,score:0,anim:0,frame:0,state:'idle',ammo:0});
-  keys.left=keys.right=keys.jump=keys.shoot=false; wantJump=false;
-  enemies.splice(0,enemies.length,
-    patrol(380,floorY-20,22,20,340,560,1.1),
-    patrol(1080,floorY-20,22,20,1060,1160,1.2),
-    patrol(1720,floorY-20,22,20,1700,1820,1.2),
-    fly(900,floorY-260,22,18,820,1040,1.3,20),
-    fly(2300,floorY-300,22,18,2240,2440,1.5,28)
-  );
-  fallSpawners=[ {x:1450, interval:240, timer:0},{x:2500, interval:200, timer:0} ];
-  qblocks.forEach(b=>b.hit=false);
-  Object.assign(boss,{x:WORLD_W-320,y:floorY-120,vx:0,vy:0,hp:14,alive:true,cd:0});
-  bullets.length=0; camX=0; t=0; running=true; hide(); console.log("Game reset OK");
-  if(AC && AC.state==='suspended') AC.resume();
-  startMusic();
-  loop();
+function respawn(init=false){
+  player.x=player.spawn.x; player.y=player.spawn.y; player.vx=0; player.vy=0; player.onGround=false; player.coyote=0; player.jbuf=0; player.wantCut=false;
+  if(!init) player.lives--; if(player.lives<0){ gameOver(); }
 }
+function damage(fall=false){ respawn(); }
+function finish(){ run=false; alert(`Nyertél! Pont: ${player.score} – Idő: ${timeEl.textContent}s`); }
+function gameOver(){ run=false; alert(`Vége! Pont: ${player.score} – Idő: ${timeEl.textContent}s`); }
 
-/* ===== Physics & Update ===== */
-function moveAndCollide(o){
-  // X
-  o.x+=o.vx||0;
-  for(const p of solids()){ if(aabb(o,p)){ if((o.vx||0)>0) o.x=p.x-o.w; else if((o.vx||0)<0) o.x=p.x+p.w; o.vx=0; }}
-  // Y
-  o.y+=o.vy||0; let onG=false;
-  for(const p of solids()){ if(aabb(o,p)){ if((o.vy||0)>0){ o.y=p.y-o.h; onG=true; } else if((o.vy||0)<0){ o.y=p.y+p.h; } o.vy=0; }}
-  o.onGround=onG;
-}
-
-function shoot(who){
-  if(who==='player'){ const dir=(player.vx>=0?1:-1); bullets.push({x:player.x+player.w/2,y:player.y+player.h/2-8,w:8,h:4,vx:8*dir,vy:0,who:'player'}); sfx(880,0.06,'square',0.1); }
-  else { const dir = Math.sign((player.x - boss.x) || 1); bullets.push({x:boss.x+boss.w/2,y:boss.y+boss.h/2,w:8,h:4,vx:5*dir,vy:0,who:'enemy'}); sfx(160,0.08,'triangle',0.08); }
-}
-
-function update(){
-  t+=1/60; timeEl.textContent=t.toFixed(0); livesEl.textContent=player.lives; scoreEl.textContent=player.score; ammoEl.textContent=player.ammo;
-
-  // Input
-  if(keys.left) player.vx-=MOVE;
-  if(keys.right) player.vx+=MOVE;
-  player.vx*=FRICTION; player.vx=clamp(player.vx,-MAX_VX,MAX_VX);
-  if(wantJump && player.onGround){ player.vy=JUMP; player.onGround=false; sfx(700,0.08,'square',0.1); }
-  wantJump=false; // \u2190 egy frame-re fogyasztjuk el, így nincs pattogás
-  player.vy+=G; if(player.vy>20) player.vy=20;
-
-  // Anim
-  if(!player.onGround) player.state='jump'; else if(Math.abs(player.vx)>0.5) player.state='run'; else player.state='idle';
-  player.anim += (player.state==='run'?1:0.5); if(player.anim>8){ player.anim=0; player.frame=(player.frame+1)%2; }
-
-  moveAndCollide(player);
-
-  // Lövés
-  if(keys.shoot && player.ammo>0){ shoot('player'); player.ammo--; keys.shoot=false; }
-
-  // Mozgó platformok – csak akkor vigyen, ha tetején állunk
-  for(const m of platforms){ if(m.type!=='moving') continue;
-    m.x += m.speed*m.dir;
-    if(m.x < m.minX){ m.x = m.minX; m.dir=1; }
-    if(m.x + m.w > m.maxX){ m.x = m.maxX - m.w; m.dir=-1; }
-    if(onTopOf(player, m)) player.x += m.speed*m.dir;
-  }
-
-  // Enemies
-  for(const e of enemies){
-    if(!e.active) continue;
-    if(e.type!=='fly'){ e.vy+=G; if(e.vy>20) e.vy=20; }
-    if(e.type==='patrol'){
-      // peremvédelem: nézzen maga elé
-      const aheadX = e.x + (e.dir>0 ? e.w+1 : -1), footY = e.y + e.h + 1;
-      if(!isSolidAt(aheadX, footY)) e.dir*=-1;
-      e.x += e.speed*e.dir;
-      if(e.x<e.minX){e.x=e.minX; e.dir=1;}
-      if(e.x+e.w>e.maxX){e.x=e.maxX-e.w; e.dir=-1;}
-      moveAndCollide(e);
-    } else if(e.type==='fly'){
-      e.x += e.speed*e.dir;
-      if(e.x<e.minX){e.x=e.minX; e.dir=1;}
-      if(e.x+e.w>e.maxX){e.x=e.maxX-e.w; e.dir=-1;}
-      e.t += 0.08; e.y += Math.sin(e.t)*0.9;
-    } else if(e.type==='fall'){
-      e.vy += 0.35; e.y += e.vy; if(e.y>H+80) e.active=false;
-    }
-  }
-
-  // Zuhanó spawner
-  for(const sp of fallSpawners){ sp.timer++; if(sp.timer>=sp.interval){ sp.timer=0; enemies.push(falling(sp.x)); } }
-
-  // Coins
-  for(let i=coins.length-1;i>=0;i--){const c=coins[i]; if(aabb(player,c)){ coins.splice(i,1); player.score+=5; sfx(950,0.07,'triangle',0.1); }}
-
-  // Question blocks
-  for(const b of qblocks){
-    if(aabb(player,b) && player.vy<0 && player.y> b.y+b.h-8){
-      if(!b.hit){
-        b.hit=true;
-        if(b.type==='coin'){ player.score+=2; sfx(500,0.06,'square',0.1); }
-        if(b.type==='serum' && player.ammo<=0){ player.ammo=12; sweep(1200,400,0.25,'sawtooth',0.12); }
-      }
-      player.vy=2;
-    }
-  }
-
-  // Player vs enemies
-  for(const e of enemies){ if(!e.active) continue;
-    if(aabb(player,e)){
-      if(player.vy>0 && player.y+player.h<=e.y+8){ e.active=false; player.vy=JUMP*0.6; player.score+=10; sweep(800,200,0.2,'square',0.1); }
-      else { hurt(); break; }
-    }
-  }
-
-  // Bullets
-  for(let i=bullets.length-1;i>=0;i--){const b=bullets[i]; b.x+=b.vx; b.y+=b.vy;
-    if(b.x<0||b.x>WORLD_W||b.y<0||b.y>H){ bullets.splice(i,1); continue; }
-    if(b.who==='player'){
-      for(const e of enemies){ if(e.active && aabb(b,e)){ e.active=false; bullets.splice(i,1); player.score+=10; sfx(300,0.06,'triangle',0.1); break; } }
-      if(boss.alive && aabb(b,boss)){ bullets.splice(i,1); boss.hp--; sfx(200,0.06,'sawtooth',0.1); if(boss.hp<=0){ boss.alive=false; sweep(600,80,0.5,'sawtooth',0.14); } }
-    } else {
-      if(aabb(b,player)){ bullets.splice(i,1); hurt(); }
-    }
-  }
-
-  // Boss AI
-  if(boss.alive){
-    boss.vy+=G; if(boss.vy>20) boss.vy=20; moveAndCollide(boss);
-    if(Math.random()<0.01 && boss.onGround) boss.vy=-10;
-    boss.cd--; if(boss.cd<=0){ boss.cd=90; shoot('enemy'); }
-  }
-
-  // Cél
-  if(!boss.alive && aabb(player,{x:goal.x-6,y:goal.y,w:goal.w+12,h:goal.h})){
-    running=false; show('Nyertél! 🏁',`Pont: ${player.score} • Idő: ${timeEl.textContent}s`);
-  }
-
-  // Leesés
-  if(player.y>H){ hurt(true); }
-
-  // Kamera
-  camX = clamp(player.x - VIEW_W/2, 0, WORLD_W - VIEW_W);
-}
-
-function hurt(fall=false){
-  player.lives--; sweep(400,120,0.25,'triangle',0.14);
-  if(player.lives>0){ Object.assign(player,{x:Math.max(0,player.x-60),y:floorY-48,vx:0,vy:0,onGround:false}); }
-  else { running=false; show('Vesztettél 💀',`Pont: ${player.score} • Idő: ${timeEl.textContent}s${fall?' • Leesés':''}`); }
-}
-
-/* ===== Draw ===== */
-function rr(x,y,w,h,r){const t=Math.min(r,Math.abs(w)/2,Math.abs(h)/2); ctx.beginPath(); ctx.moveTo(x+t,y); ctx.arcTo(x+w,y,x+w,y+h,t); ctx.arcTo(x+w,y+h,x,y+h,t); ctx.arcTo(x,y+h,x,y,t); ctx.arcTo(x,y,x+w,y,t); ctx.closePath();}
+/* ====== Rajzolás ====== */
 function draw(){
-  // teljes vászon törlés HiDPI-kompatibilisen
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cvs.width,cvs.height); ctx.restore();
-
-  ctx.save(); ctx.translate(-camX,0);
+  // skála
+  ctx.setTransform(SCALE,0,0,SCALE,0,0);
+  // háttér
+  ctx.fillStyle="#a6e4ff"; ctx.fillRect(0,0,VW,VH);
+  // parallax dombok és felhők
   drawBackground();
-  // ground
-  ctx.fillStyle=getVar('--ground'); groundSegs.forEach(([gx,gw])=>ctx.fillRect(gx,floorY,gw,60));
-  // platforms
-  platforms.forEach(p=>{ if(p.type==='brick'||p.type==='moving') drawBrick(p); });
-  // blocks
-  qblocks.forEach(b=>drawQ(b));
-  // coins
-  ctx.fillStyle=getVar('--coin'); for(const c of coins){ rr(c.x,c.y,c.w,c.h,4); ctx.fill(); }
-  // enemies
-  enemies.forEach(e=>{ if(e.active) drawEnemy(e); });
-  // boss + flag
-  drawBoss(); drawFlag();
-  // bullets
-  bullets.forEach(b=>{ ctx.fillStyle=b.who==='player'?'#2563eb':'#ef4444'; rr(b.x,b.y,b.w,b.h,2); ctx.fill(); });
-  // player
-  drawPlayer();
-  ctx.restore();
+  // csempék
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const ch=tileAt(x,y); const px=x*TILE - camX, py=y*TILE - camY; if(px<-TILE||px>VW||py<-TILE||py>VH) continue;
+      if(ch==='#' || ch==='='){ drawGround(px,py); }
+      if(ch==='|'||ch==='‾'||ch==='L'||ch==='J'||ch==='I'){ drawPipe(px,py); }
+      if(ch==='?'){ drawQ(px,py, blocks.find(b=>b.x===x*TILE && b.y===y*TILE)?.hit ); }
+      if(ch==='g'){ drawFlag(px+2, py-96); }
+    }
+  }
+  // blokkok (vizuál már fent van)
+
+  // coinok
+  for(const c of coins){ const px=c.x - camX, py=c.y - camY; if(px<-16||px>VW+16) continue; drawCoin(px,py,c.t); }
+  // ellenségek
+  for(const e of enemies){ if(!e.alive) continue; const px=e.x - camX, py=e.y - camY; if(px<-32||px>VW+32) continue; drawGoomba(px,py,e.dir); }
+  // játékos
+  drawPlayer(player.x - camX, player.y - camY);
 }
 
 function drawBackground(){
-  // parallax talaj, hegyek, felhők
-  ctx.fillStyle='#cdecff'; ctx.fillRect(camX*0.2, H-180, VIEW_W+400, 120);
-  ctx.fillStyle='#a0d4ff'; [200,600,1000,1400,1800,2200,2600].forEach(x=>tri(x,H-60,90));
-  ctx.fillStyle='rgba(255,255,255,.9)'; [150,520,870,1320,1700,2120,2520].forEach((x,i)=>cloud(x+Math.sin((performance.now()/1200)+i)*20,120+ (i%3)*30));
+  // talaj sáv a horizonton
+  ctx.fillStyle='#dff5ff'; ctx.fillRect(0,VH-60,VW,60);
+  // dombok
+  ctx.fillStyle=getVar('--hill'); tri(80-camX*0.3,VH-60,100); tri(300-camX*0.25,VH-60,140); tri(560-camX*0.2,VH-60,120);
+  ctx.fillStyle=getVar('--hill2'); tri(180-camX*0.2,VH-60,70); tri(420-camX*0.18,VH-60,90);
+  // felhők
+  cloud(120-camX*0.1,60); cloud(360-camX*0.12,40); cloud(640-camX*0.08,70);
 }
-function tri(cx,by,sz){ctx.beginPath();ctx.moveTo(cx,by);ctx.lineTo(cx-sz,by);ctx.lineTo(cx,by-sz);ctx.closePath();ctx.fill();}
-function cloud(x,y){bubble(x,y,22);bubble(x+18,y-8,16);bubble(x+38,y,20);bubble(x+56,y-6,14);} 
-function bubble(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function tri(cx,by,s){ ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx-s,by); ctx.lineTo(cx,by-s); ctx.closePath(); ctx.fill(); }
+function cloud(x,y){ bubble(x,y,12); bubble(x+12,y-6,10); bubble(x+26,y,12); bubble(x+38,y-4,8); }
+function bubble(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.95)'; ctx.fill(); }
 
-function drawBrick(p){
-  ctx.save(); ctx.translate(p.x,p.y);
-  const bw=20,bh=10;
-  for(let yy=0; yy<p.h; yy+=bh){ for(let xx=0; xx<p.w; xx+=bw){
-    ctx.fillStyle=getVar('--brick'); ctx.fillRect(xx,yy,bw-1,bh-1);
-    ctx.fillStyle=getVar('--brickDark'); ctx.fillRect(xx,yy+bh-3,bw-1,3);
-  }}
-  ctx.restore();
+function drawGround(x,y){ ctx.fillStyle=getVar('--ground'); ctx.fillRect(x,y,TILE,TILE); ctx.fillStyle=getVar('--groundTop'); ctx.fillRect(x,y+TILE-4,TILE,4); }
+function drawPipe(x,y){ ctx.fillStyle=getVar('--pipe'); ctx.fillRect(x,y,TILE,TILE); ctx.fillStyle=getVar('--pipe2'); ctx.fillRect(x+2,y+TILE-5,TILE-4,5); }
+function drawQ(x,y,hit){ ctx.fillStyle= hit? '#ffe08a' : getVar('--q'); rr(x,y,16,16,3); ctx.fill(); ctx.fillStyle=getVar('--q2'); ctx.fillRect(x+6,y+4,2,2); ctx.fillRect(x+8,y+4,2,2); ctx.fillRect(x+6,y+8,2,2); ctx.fillRect(x+8,y+8,2,2); ctx.fillRect(x+7,y+12,2,2); }
+function drawCoin(x,y,t){ ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(t*8)*0.2); rr(-6,-6,12,12,6); ctx.fillStyle=getVar('--coin'); ctx.fill(); ctx.restore(); }
+function drawFlag(x,y){ ctx.fillStyle='#9ca3af'; ctx.fillRect(x,y,4,96); ctx.fillStyle=getVar('--flag'); ctx.beginPath(); ctx.moveTo(x+4,y+14); ctx.lineTo(x+28,y+8); ctx.lineTo(x+28,y+22); ctx.closePath(); ctx.fill(); }
+function drawGoomba(x,y,dir){ ctx.fillStyle=getVar('--enemy'); rr(x,y,14,12,3); ctx.fill(); ctx.fillStyle='#111'; ctx.fillRect(x+3,y+4,2,2); ctx.fillRect(x+9,y+4,2,2); }
+function drawPlayer(x,y){
+  // kis pixel‑figura anim nélkül (futásnál később bővíthető)
+  ctx.fillStyle=getVar('--player'); rr(x,y,12,14,3); ctx.fill();
+  ctx.fillStyle=getVar('--hat'); ctx.fillRect(x,y-3,12,3); // sapka
+  ctx.fillStyle='#111'; ctx.fillRect(x+8,y+3,2,2); // szem
 }
-function drawQ(b){
-  ctx.save(); ctx.translate(b.x,b.y);
-  ctx.fillStyle=b.hit?'#ffe08a':getVar('--qblock'); rr(0,0,b.w,b.h,3); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.stroke();
-  ctx.fillStyle=getVar('--qmark'); ctx.fillRect(7,4,3,3); ctx.fillRect(11,4,3,3); ctx.fillRect(7,8,3,3); ctx.fillRect(11,8,3,3); ctx.fillRect(9,12,3,3);
-  ctx.restore();
-}
-function drawEnemy(e){
-  ctx.save(); ctx.translate(e.x,e.y);
-  ctx.fillStyle=getVar('--enemy'); rr(0,0,e.w,e.h,4); ctx.fill();
-  ctx.fillStyle='#111'; ctx.fillRect(e.w*0.65,3,3,3);
-  ctx.fillStyle='#a11'; ctx.fillRect(3,e.h-3,6,3); ctx.fillRect(e.w-9,e.h-3,6,3);
-  ctx.restore();
-}
-function drawBoss(){
-  if(!boss.alive) return;
-  ctx.save(); ctx.translate(boss.x,boss.y);
-  ctx.fillStyle=getVar('--boss'); rr(0,0,boss.w,boss.h,6); ctx.fill();
-  ctx.fillStyle='#fff'; ctx.fillRect(10,10,8,6); ctx.fillRect(boss.w-18,10,8,6);
-  ctx.fillStyle='#111'; ctx.fillRect(13,12,3,3); ctx.fillRect(boss.w-15,12,3,3);
-  const p=boss.hp/14; ctx.fillStyle='rgba(0,0,0,.2)'; ctx.fillRect(0,-10,boss.w,6); ctx.fillStyle='#22c55e'; ctx.fillRect(0,-10,boss.w*p,6);
-  ctx.restore();
-}
-function drawFlag(){
-  ctx.fillStyle='#d1d5db'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
-  ctx.fillStyle='#9ca3af'; ctx.beginPath(); ctx.arc(goal.x+goal.w/2, goal.y, 6, 0, Math.PI*2); ctx.fill();
-  const wave=Math.sin(performance.now()/240)*3; ctx.fillStyle=getVar('--goal');
-  ctx.beginPath(); ctx.moveTo(goal.x+goal.w, goal.y+20); ctx.lineTo(goal.x+goal.w+28, goal.y+16+wave); ctx.lineTo(goal.x+goal.w+28, goal.y+28-wave); ctx.closePath(); ctx.fill();
-}
-function drawPlayer(){
-  ctx.save();
-  // \u26a0\ufe0f FIX: ne vond le újra a camX-et, mert a draw() már eltolta a világot. Ez okozta a "perem pattogást" és a látszólagos visszaugrást.
-  ctx.translate(player.x+player.w/2, player.y+player.h/2);
-  ctx.scale(player.faces,1);
-  ctx.fillStyle=getVar('--player'); rr(-10,-18,20,36,6); ctx.fill(); // törzs
-  ctx.fillStyle='#ffe08a'; rr(-9,-30,18,14,4); ctx.fill(); // fej
-  ctx.fillStyle='#111'; ctx.fillRect(2,-26,3,3); // szem
-  ctx.fillStyle=getVar('--acc'); // karok
-  ctx.fillRect(-12,-10,6,10); ctx.fillRect(6,-10,6,10);
-  // láb anim
-  const run = (player.state==='run')?player.frame:0;
-  if(player.state==='jump'){ ctx.fillRect(-9,12,6,10); ctx.fillRect(3,12,6,10); }
-  else if(run===0){ ctx.fillRect(-12,12,8,10); ctx.fillRect(4,12,8,10); }
-  else { ctx.fillRect(-6,12,8,10); ctx.fillRect(-14,12,8,10); }
-  ctx.restore();
-}
-function getVar(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();}
+function rr(x,y,w,h,r){ const t=Math.min(r,Math.abs(w)/2,Math.abs(h)/2); ctx.beginPath(); ctx.moveTo(x+t,y); ctx.arcTo(x+w,y,x+w,y+h,t); ctx.arcTo(x+w,y+h,x,y+h,t); ctx.arcTo(x,y+h,x,y,t); ctx.arcTo(x,y,x+w,y,t); ctx.closePath(); }
+function getVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
-/* ===== Loop ===== */
-function loop(){ if(!running) return; update(); draw(); requestAnimationFrame(loop); }
+/* ====== Ciklus ====== */
+function frame(){
+  const now=performance.now()/1000; let dt=now-last; last=now; acc+=dt; if(dt>0.25) acc=0; // tab váltás védő
+  while(acc>=DT){ update(DT); acc-=DT; }
+  draw(); if(run) requestAnimationFrame(frame);
+}
 
-/* ===== Start ===== */
-reset();
+/* ====== UI ====== */
+document.getElementById('reset').onclick=()=>{ player.lives=3; player.score=0; clock=0; respawn(true); run=true; };
+document.getElementById('pause').onclick=()=>{ run=!run; if(run) { last=performance.now()/1000; requestAnimationFrame(frame); } };
+
+/* ====== Start ====== */
+function init(){ build(); last=performance.now()/1000; requestAnimationFrame(frame); }
+init();
 </script>
 </body>
 </html>
