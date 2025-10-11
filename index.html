@@ -3,209 +3,224 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kevin – Vasfelvásárló (poén oldal)</title>
-  <meta name="description" content="Kevin – vas és fémhulladék átvétele (poén oldal). Árak csak példa, ne vedd komolyan!">
+  <title>Jónás Kevin – Árnyékboxoló (poén oldal)</title>
+  <meta name="description" content="Jónás Kevin, a legendás árnyékboxoló. 114 győzelem az árnyéka ellen. Poén oldal, ne vedd komolyan!">
   <style>
     :root{
-      --bg:#0f1320; --card:#151a2f; --muted:#aab3ff; --text:#e9ecff;
-      --line:#2a3470; --accent:#7aa2ff; --chip:#1e2447;
+      --bg:#0d111a; --card:#121826; --line:#28314d; --text:#e9eefc; --muted:#aeb9ff; --accent:#7aa2ff; --chip:#1a2140;
     }
     *{box-sizing:border-box}
     body{
       margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 800px at 0% -10%, #1a2050 0%, var(--bg) 45%), var(--bg);
+      background: radial-gradient(1100px 700px at 10% -10%, #18224a 0%, var(--bg) 50%) , var(--bg);
       color:var(--text); line-height:1.55;
     }
     .wrap{max-width:1100px; margin:0 auto; padding:24px}
-    header{display:flex; align-items:center; gap:14px; margin:6px 0 22px}
+    header{display:flex; align-items:center; gap:12px; margin:6px 0 22px}
     .badge{background:linear-gradient(90deg,#9ee7ff,#9ea6ff 60%,#ffc6ff);
-      color:#061032; padding:6px 12px; border-radius:999px; font-weight:700; font-size:14px}
+      color:#061032; padding:6px 12px; border-radius:999px; font-weight:800; font-size:14px}
     .card{
-      display:grid; grid-template-columns:360px 1fr; gap:26px;
-      background:linear-gradient(180deg,#171d3f,#121632);
-      border:1px solid var(--line); border-radius:20px; padding:22px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      display:grid; grid-template-columns:380px 1fr; gap:26px;
+      background:linear-gradient(180deg,#151c3a,#0f1429);
+      border:1px solid var(--line); border-radius:22px; padding:22px; box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
-    .photo{border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#0b0f26; aspect-ratio:4/5}
-    .photo img{width:100%; height:100%; object-fit:cover; display:block}
-    h1{margin:0 0 6px; font-size:clamp(28px,4vw,42px)}
+    .photo{border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#0b0f26; aspect-ratio:4/5; position:relative}
+    .photo img{width:100%; height:100%; object-fit:cover; display:block; filter:saturate(.95) contrast(1.02)}
+    /* árnyék animáció (poén) */
+    .shadow{
+      position:absolute; inset:auto 6% 6% auto; width:70%; height:70%;
+      background: radial-gradient(40% 40% at 50% 50%, #0006, #0000 70%);
+      filter: blur(10px); border-radius:50%; animation: bob 2.4s ease-in-out infinite;
+      pointer-events:none;
+    }
+    @keyframes bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+    h1{margin:0 0 4px; font-size:clamp(28px,4vw,42px)}
     .subtitle{margin:0 0 14px; color:var(--muted)}
     .chips{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 16px}
-    .chip{background:var(--chip); border:1px solid var(--line); color:#cdd5ff; padding:6px 10px; border-radius:999px; font-size:13px}
-    .grid{display:grid; gap:14px}
-    .section{background:#101532; border:1px dashed var(--line); border-radius:14px; padding:14px}
-    .section h2{margin:0 0 8px; font-size:18px; color:#d1d7ff}
-    .list{margin:0; padding-left:18px}
-    .table{width:100%; border-collapse:separate; border-spacing:0 8px; font-size:14px}
-    .table tr{background:#0f1530; border:1px solid var(--line)}
-    .table td,.table th{padding:10px 12px}
-    .table th{color:#cdd5ff; text-align:left; font-weight:700; border-bottom:1px solid var(--line)}
+    .chip{background:var(--chip); border:1px solid var(--line); color:#cfd6ff; padding:6px 10px; border-radius:999px; font-size:13px}
+
+    .section{background:#0f1533; border:1px dashed var(--line); border-radius:14px; padding:14px}
+    .section h2{margin:0 0 8px; font-size:18px; color:#d9dfff}
+    .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
     .row{background:#0f1530; border:1px solid var(--line); border-radius:12px; padding:12px}
+    .stat{display:flex; align-items:center; gap:12px}
+    .stat .num{font-weight:900; font-size:32px}
+    .stat small{opacity:.8}
+    .belt{font-weight:900; letter-spacing:.3px; background:linear-gradient(90deg,#ffd86b,#ffb04d);
+      color:#271900; padding:6px 10px; border-radius:999px; border:1px solid #8a6a2a}
+
     .cta{display:flex; flex-wrap:wrap; gap:10px}
     .btn{
       appearance:none; border:1px solid #3550ff66; background:linear-gradient(180deg,#2a3cff,#1a2aff);
-      color:#fff; padding:10px 14px; border-radius:12px; font-weight:700; text-decoration:none; cursor:pointer;
+      color:#fff; padding:10px 14px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer;
       transition:transform .08s ease, filter .2s ease;
     }
-    .btn:hover{transform:translateY(-1px); filter:brightness(1.05)}
+    .btn:hover{transform:translateY(-1px); filter:brightness(1.06)}
     .ghost{background:transparent; border:1px solid #3240a8; color:#c8d1ff}
-    footer{opacity:.7; text-align:center; font-size:12px; margin:20px 0}
-    .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+
     input, select{
       width:100%; background:#0c1130; color:#e9ecff; border:1px solid var(--line);
       border-radius:10px; padding:10px 12px; outline:none;
     }
-    .price{font-weight:800; font-size:20px}
+    .combo{font-size:18px; font-weight:800}
+    .timer{font-size:34px; font-weight:900; letter-spacing:1px}
+
+    footer{opacity:.7; text-align:center; font-size:12px; margin:20px 0}
     @media (max-width:900px){ .card{grid-template-columns:1fr} .photo{max-height:420px} }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <span class="badge">100% poén • „Vasd meg a napod!”</span>
+      <span class="badge">100% poén • „Nem üt vissza? Nyert ügy.”</span>
     </header>
 
-    <main class="card" role="main" aria-label="Vicces vasfelvásárló kártya">
+    <main class="card" role="main" aria-label="Vicces árnyékboxoló kártya">
       <figure class="photo" aria-label="Kevin portré">
         <!-- Tedd a fájlt a HTML mellé: kevin.jpg -->
-        <img src="kevin.jpg" alt="Kevin – a (poén) vasfelvásárló" />
+        <img src="kevin.jpg" alt="Jónás Kevin – árnyékboxoló (poén)" />
+        <div class="shadow" aria-hidden="true"></div>
       </figure>
 
-      <section class="grid">
-        <div>
-          <h1>Kevin – Vasfelvásárló</h1>
-          <p class="subtitle">Mindenféle fémhulladék (poén) átvétele: vas, réz, alu, rozsdamentes – csak ne a hűtőt hozd el anyuéktól! 🤣</p>
-          <div class="chips" aria-label="Jellemzők">
-            <span class="chip">🧲 Mágnes mindig kéznél</span>
-            <span class="chip">⚖️ Szemre 1 kg pontosság (nem komoly)</span>
-            <span class="chip">🚚 Képletes kiszállás</span>
-            <span class="chip">☕ Kávé helyben (instant)</span>
-          </div>
-        </div>
+      <section>
+        <h1>Jónás Kevin</h1>
+        <p class="subtitle">Árnyékboxoló • önjelölt nappali világbajnok • “sparring partnerem: a lámpa” 🤣</p>
 
-        <div class="section">
-          <h2>Mit „veszünk” (poénból)</h2>
-          <ul class="list">
-            <li>Vas és acél (csövek, lemezek, radiátorok, „még a nagyi padlásáról is”)</li>
-            <li>Színesfém: réz, alumínium, sárgaréz</li>
-            <li>Rozsdamentes / saválló darabok</li>
-            <li>Elektronikai kütyük (csak ha már tényleg hulladék)</li>
-          </ul>
-          <p style="margin-top:8px;font-size:13px;opacity:.8">Figyelem: Ez egy <strong>baráti poén oldal</strong>. Árak és szolgáltatás nem valósak.</p>
-        </div>
-
-        <div class="section">
-          <h2>Példa árlista (Ft/kg – szerkeszthető)</h2>
-          <table class="table" aria-label="példa árlista">
-            <thead>
-              <tr><th>Anyag</th><th>Példa ár</th></tr>
-            </thead>
-            <tbody id="priceTable">
-              <tr><td>Vas / acél</td><td data-key="vas">85</td></tr>
-              <tr><td>Réz</td><td data-key="rez">1800</td></tr>
-              <tr><td>Alumínium</td><td data-key="alu">450</td></tr>
-              <tr><td>Rozsdamentes</td><td data-key="rozsda">300</td></tr>
-            </tbody>
-          </table>
-          <div class="two" style="margin-top:10px">
-            <label>
-              Anyag
-              <select id="material">
-                <option value="vas">Vas / acél</option>
-                <option value="rez">Réz</option>
-                <option value="alu">Alumínium</option>
-                <option value="rozsda">Rozsdamentes</option>
-              </select>
-            </label>
-            <label>
-              Tömeg (kg)
-              <input type="number" id="kg" min="0" step="0.1" placeholder="pl. 12.5">
-            </label>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
-              <div>
-                <div style="opacity:.8; font-size:13px">Becsült kifizetés</div>
-                <div class="price" id="est">0 Ft</div>
-              </div>
-              <button class="btn" id="calcBtn">Számol</button>
-            </div>
-          </div>
+        <div class="chips" aria-label="Jellemzők">
+          <span class="chip">🥊 114–0–0 az árnyéka ellen</span>
+          <span class="chip">🧠 „Elmozgok a gondolat elől is”</span>
+          <span class="chip">☕ Koffein-súlycsoport: félnehéz</span>
+          <span class="chip">🎧 Edzés zene: tapsgép remix</span>
         </div>
 
         <div class="two">
           <div class="section">
-            <h2>Nyitvatartás</h2>
-            <ul class="list">
-              <li>H–P: 08:00–16:00 (kávészünet véletlenszerű)</li>
-              <li>Szo: 09:00–12:00 (ha nem alszunk túl)</li>
-              <li>V: Zárva (vasárnap = vas pihen)</li>
+            <h2>Mérleg & „öv”</h2>
+            <div class="row stat">
+              <div class="num" id="wins">0</div>
+              <div>
+                <div><strong>Győzelem</strong> (árnyék ellen)</div>
+                <small>Hivatalosan nem hivatalos. 😄</small>
+              </div>
+            </div>
+            <div style="margin-top:10px" class="row">
+              <span class="belt">ARANY(ék)ÖV – nappali kategória</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>Kombó-generátor</h2>
+            <div class="row">
+              <div class="combo" id="combo">Nyomd meg a gombot!</div>
+              <div class="cta" style="margin-top:10px">
+                <button class="btn" id="comboBtn">Mutass kombót</button>
+                <button class="btn ghost" id="slowMo">Lassított módban!</button>
+              </div>
+              <small style="opacity:.8">Példa: Jab – Cross – Bal horog – Slip – Roll</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="two" style="margin-top:12px">
+          <div class="section">
+            <h2>Menetidőzítő</h2>
+            <div class="row" style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+              <div class="timer" id="timer">03:00</div>
+              <div class="cta">
+                <button class="btn" id="start">Start</button>
+                <button class="btn ghost" id="pause">Pause</button>
+                <button class="btn ghost" id="reset">Reset</button>
+              </div>
+            </div>
+            <small style="opacity:.8">Alap: 3 perc menet / 1 perc pihi (csak a 3 percet számoljuk).</small>
+          </div>
+
+          <div class="section">
+            <h2>Fun factek</h2>
+            <ul style="margin:0; padding-left:18px">
+              <li>Az árnyéka sosem adott fel – de mindig kiütötte a fény.</li>
+              <li>Legkedvesebb technika: „Ne árnyékolj rám!” félfordulat. </li>
+              <li>Hitvallás: „Ha nincs ellenfél, nincs vesztett meccs.”</li>
             </ul>
           </div>
-          <div class="section">
-            <h2>Elérhetőség (kamu)</h2>
-            <div class="cta" style="margin-top:6px">
-              <a class="btn" href="tel:+3612345678">📞 Hívás (poén)</a>
-              <a class="btn ghost" href="#" onclick="alert('Útvonal? Fordulj a legközelebbi MÉH-telep felé – ez csak vicc oldal!');return false;">🗺️ Útvonal</a>
-            </div>
-            <p style="opacity:.8; font-size:13px; margin-top:10px">Valós átvételhez keress hivatalos MÉH-telepet.</p>
-          </div>
         </div>
 
-        <div class="section">
-          <h2>Gyakori kérdések</h2>
-          <details class="row"><summary><b>Mit vigyek magammal?</b></summary>
-            <p>Személyit (a humorérzéked mellé). Valós telepen: igazolvány, számla, stb.</p>
-          </details>
-          <details class="row"><summary><b>Mindent mágnessel néztek?</b></summary>
-            <p>Itt csak ránézünk (🤣). A valóságban anyagvizsgálat is lehet.</p>
-          </details>
-          <details class="row"><summary><b>Áralku?</b></summary>
-            <p>Kávéval mindig jobb az alku – de ez csak poén oldal, nincs valós felvásárlás.</p>
-          </details>
+        <div class="cta" style="margin-top:14px">
+          <button class="btn" onclick="alert('Szerződtetnéd? Előbb keríts ellenfelet, aki nem átlátszó! 😄')">Szerződtetés (kamu)</button>
+          <button class="btn ghost" onclick="alert('Következő gála: nappali, 11:11 – belépő: napsugár.')">Következő gála</button>
         </div>
 
-        <div class="cta">
-          <button class="btn" onclick="alert('Köszönjük! A rendszerünk (ami nincs) rögzítette a kérést. 🤖')">Időpontkérés (kamu)</button>
-          <button class="btn ghost" onclick="alert('Készlet feltöltve: 0 tonna nevetés. 😄')">Raktár állapot</button>
-        </div>
+        <p style="opacity:.7; font-size:12px; margin-top:12px">
+          Ez egy baráti, ártalmatlan poén oldal. Ne tévesszen meg senkit, és csak beleegyezéssel használd. 💙
+        </p>
       </section>
     </main>
 
     <footer>
-      Ez egy <strong>baráti, ártalmatlan poén oldal</strong>. Ne tévesszen meg senkit, ne használd más nevében beleegyezés nélkül. 💙
+      © Poén Liga – „Minden ütés számít, ha tapsgép van a közelben.”
     </footer>
   </div>
 
   <script>
-    // Egyszerű kalkulátor a példaárak alapján
-    const priceMap = { vas:85, rez:1800, alu:450, rozsda:300 };
-    const estEl = document.getElementById('est');
-    const kgEl = document.getElementById('kg');
-    const matEl = document.getElementById('material');
-    const btn = document.getElementById('calcBtn');
+    // Győzelem-számláló animáció 114-ig
+    const winsEl = document.getElementById('wins');
+    let targetWins = 114, curWins = 0;
+    const tick = () => {
+      if (curWins < targetWins){
+        curWins += Math.ceil((targetWins - curWins)/8);
+        if (curWins > targetWins) curWins = targetWins;
+        winsEl.textContent = curWins;
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
 
-    function formatFt(n){
-      return new Intl.NumberFormat('hu-HU').format(Math.round(n)) + ' Ft';
+    // Kombó-generátor
+    const moves = ["Jab","Cross","Bal horog","Jobb horog","Felütés","Slip","Roll","Lépj balra","Lépj jobbra","Hátra","Testre jab","1–2","1–1–2","Liver shot (képzelet)","Pivot"];
+    const comboEl = document.getElementById('combo');
+    function randomCombo(slow=false){
+      const len = Math.floor(Math.random()*3)+3; // 3–5 elem
+      const out = [];
+      for(let i=0;i<len;i++){
+        out.push(moves[Math.floor(Math.random()*moves.length)]);
+      }
+      if(slow){
+        comboEl.textContent = "";
+        let i=0;
+        const iv = setInterval(()=>{
+          comboEl.textContent += (i? " – ":"") + out[i];
+          i++; if(i>=out.length) clearInterval(iv);
+        }, 450);
+      }else{
+        comboEl.textContent = out.join(" – ");
+      }
+      comboEl.animate([{opacity:.3, transform:"translateY(4px)"},{opacity:1, transform:"translateY(0)"}],{duration:180, easing:"ease-out"});
     }
-    function calc(){
-      const kg = parseFloat(kgEl.value || '0');
-      const mat = matEl.value;
-      const price = priceMap[mat] ?? 0;
-      const total = kg > 0 ? kg * price : 0;
-      estEl.textContent = formatFt(total);
-    }
-    btn.addEventListener('click', calc);
+    document.getElementById('comboBtn').addEventListener('click', ()=>randomCombo(false));
+    document.getElementById('slowMo').addEventListener('click', ()=>randomCombo(true));
 
-    // Ár cellák szerkeszthetők duplakattal (poén)
-    [...document.querySelectorAll('#priceTable td[data-key]')].forEach(td=>{
-      td.contentEditable = "true";
-      td.addEventListener('input', ()=>{
-        const k = td.getAttribute('data-key');
-        const v = parseFloat(td.textContent.replace(',', '.')) || 0;
-        priceMap[k] = v;
-        calc();
-      });
-      td.title = 'Duplakatt: szerkeszthető példa ár';
+    // 3:00 menetidőzítő
+    const timerEl = document.getElementById('timer');
+    let left = 180, iv=null;
+    const fmt = s => {
+      const m = Math.floor(s/60).toString().padStart(2,'0');
+      const sec = (s%60).toString().padStart(2,'0');
+      return `${m}:${sec}`;
+    };
+    function tickTimer(){
+      if(left>0){ left--; timerEl.textContent = fmt(left); }
+      else { clearInterval(iv); iv=null; timerEl.textContent = "MENET VÉGE!"; }
+    }
+    document.getElementById('start').addEventListener('click', ()=>{
+      if(iv) return; iv = setInterval(tickTimer, 1000);
+    });
+    document.getElementById('pause').addEventListener('click', ()=>{
+      if(iv){ clearInterval(iv); iv=null; }
+    });
+    document.getElementById('reset').addEventListener('click', ()=>{
+      if(iv){ clearInterval(iv); iv=null; }
+      left = 180; timerEl.textContent = fmt(left);
     });
   </script>
 </body>
